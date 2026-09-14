@@ -9,7 +9,9 @@
   // The file name is the last path segment of the image URL, e.g. .../commons/thumb/a/ab/Foo.jpg/320px-Foo.jpg -> Foo.jpg
   P.fileNameFromUrl = function (url) {
     if (!url) return null;
-    const parts = String(url).split('/');
+    // Wikipedia appends tracking parameters (?utm_source=...) to image URLs; drop the query and fragment first
+    const clean = String(url).split('#')[0].split('?')[0];
+    const parts = clean.split('/');
     let name = parts[parts.length - 1];
     const m = name.match(/^\d+px-(.+)$/); if (m && parts.length > 2 && parts[parts.length - 2] === m[1]) name = m[1]; else if (m) name = m[1];
     try { name = decodeURIComponent(name); } catch (e) { /* keep as is */ }

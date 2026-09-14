@@ -1,7 +1,7 @@
 /* Reptile Log service worker.
    index.html: network first (a reload always gets the newest page when online), cache fallback offline.
    Other shell files: cache first with background refresh. Wikimedia and CDN assets: network first, cached after. */
-const VERSION = 'rlog-1.4.0';
+const VERSION = 'rlog-1.4.1';
 const SHELL = ['./', './index.html', './photos.js', './license.js', './species.js', './core.js', './app.js', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(VERSION).then(c => c.addAll(SHELL)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => k !== VERSION && k !== VERSION + '-lib').map(k => caches.delete(k)))).then(() => self.clients.claim())); });
