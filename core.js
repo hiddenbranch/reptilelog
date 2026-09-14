@@ -56,6 +56,8 @@
     if (Math.abs(d) <= (tol || 3)) return { state: 'ok', delta: r1(d) };
     return { state: d > 0 ? 'high' : 'low', delta: r1(d) };
   };
+  // A 5 degree window is sensible on an 88F warm side and meaningless on a 155F basking surface.
+  C.baskingTolerance = t => Math.max(5, Math.round(Number(t) * 0.08));
   C.PREY = [['Pinky mouse', '1 to 3 g'], ['Fuzzy mouse', '3 to 6 g'], ['Hopper mouse', '6 to 10 g'], ['Adult mouse', '18 to 30 g'], ['Jumbo mouse', '30 to 45 g'], ['Rat pup', '5 to 10 g'], ['Weaned rat', '15 to 30 g'], ['Small rat', '30 to 60 g'], ['Medium rat', '60 to 120 g'], ['Large rat', '120 to 200 g']];
   C.SIGNS = [
     ['Wheezing, bubbles at nose or mouth, open-mouth breathing', 'Respiratory infection', 'Check temperatures and humidity, then a vet within days.'],

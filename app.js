@@ -2,7 +2,7 @@
 (function () {
   'use strict';
   const C = window.RLCore;
-  const APP_VERSION = '1.0.0';
+  const APP_VERSION = '1.2.0';
   const PRO_REQUIRED = false;
   // Licence keys are signed offline and checked on the device. No payment provider, no server, no network call.
   const PUBLIC_KEY = {"kty":"EC","crv":"P-256","x":"REPLACE_WITH_YOUR_PUBLIC_KEY_X","y":"REPLACE_WITH_YOUR_PUBLIC_KEY_Y"};
@@ -98,11 +98,14 @@
       const cb = {}; const boxes = ['water', 'spot', 'full', 'uvb'].map(k => { cb[k] = h('input', { type: 'checkbox' }); return h('label', { class: 'field' }, h('span', null, { water: 'Water changed', spot: 'Spot cleaned', full: 'Full clean', uvb: 'UVB checked or replaced' }[k]), cb[k]); });
       const flags = h('div');
       const checkAll = () => { flags.innerHTML = ''; const t = a.targets || {};
-        [['Hot side', hot, t.hot, 3], ['Cool side', cool, t.cool, 3], ['Basking', bask, t.bask, 5], ['Humidity', rh, t.rh, 10]].forEach(([label, input, target, tol]) => {
+        [['Hot side', hot, t.hot, 3], ['Cool side', cool, t.cool, 3], ['Basking', bask, t.bask, C.baskingTolerance(t.bask)], ['Humidity', rh, t.rh, 10]].forEach(([label, input, target, tol]) => {
           const r = C.checkReading(input.value, target, tol); if (!r || r.state === 'ok') return;
           flags.append(h('div', { class: 'note' }, `${label} is ${Math.abs(r.delta)} ${label === 'Humidity' ? 'points' : 'degrees'} ${r.state === 'high' ? 'above' : 'below'} the ${target} target for ${a.name}.`)); }); };
       [hot, cool, bask, rh].forEach(i => i.addEventListener('input', checkAll));
-      body = [h('div', { class: 'row' }, field('Hot side (F)', hot), field('Cool side (F)', cool)), h('div', { class: 'row' }, field('Basking (F)', bask), field('Humidity (%)', rh)), flags, h('div', { class: 'row' }, boxes)];
+      const sp = C.speciesByName(a.species);
+      const baskHint = sp && (sp.group === 'Monitor' || (a.targets && Number(a.targets.bask) >= 120))
+        ? h('p', { class: 'muted small', style: 'margin:-8px 0 12px' }, 'Basking is the surface temperature under the lamp, read with an infrared gun. Air temperature under the same lamp reads far lower.') : null;
+      body = [h('div', { class: 'row' }, field('Hot side (F)', hot), field('Cool side (F)', cool)), h('div', { class: 'row' }, field('Basking (F)', bask), field('Humidity (%)', rh)), baskHint, flags, h('div', { class: 'row' }, boxes)];
       collect = () => ({ hot: hot.value, cool: cool.value, bask: bask.value, rh: rh.value, water: cb.water.checked, spot: cb.spot.checked, full: cb.full.checked, uvb: cb.uvb.checked }); }
     else { const kind = sel(C.HEALTH_TYPE, 'Observation'), text = h('textarea', { placeholder: 'what you saw, where, how long; what you did; dose' }), outcome = sel(['', 'Resolved', 'Ongoing', 'Monitoring', 'Referred'], ''); body = [field('Type', kind), field('Details', text), field('Outcome', outcome)]; collect = () => { if (!text.value.trim()) { toast('Write what you saw'); return null; } return { kind: kind.value, text: text.value.trim(), outcome: outcome.value }; }; }
     return h('div', null, h('h3', null, { feed: 'Feeding', weight: 'Weight', shed: 'Shed', enclosure: 'Enclosure reading', health: 'Health entry' }[type] + ' for ' + a.name), field('Date', date), body, field('Note', note), photoIn, photoBtn,
