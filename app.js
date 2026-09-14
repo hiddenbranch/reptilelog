@@ -2,7 +2,7 @@
 (function () {
   'use strict';
   const C = window.RLCore;
-  const APP_VERSION = '1.4.1';
+  const APP_VERSION = '1.4.2';
   const PRO_REQUIRED = false;
   // Licence keys are signed offline and checked on the device. No payment provider, no server, no network call.
   const PUBLIC_KEY = {"kty":"EC","crv":"P-256","x":"REPLACE_WITH_YOUR_PUBLIC_KEY_X","y":"REPLACE_WITH_YOUR_PUBLIC_KEY_Y"};
@@ -384,7 +384,7 @@
       h('div', { class: 'btns' }, h('button', { class: 'btn danger', onclick: async () => { if (confirm('Delete every animal, entry and photo on this phone?')) { await DB.clearAll(); S.cache = {}; state.animalId = null; toast('Cleared'); go('log'); } } }, 'Delete all data')),
       h('h3', null, 'Updates'),
       h('p', { class: 'muted small' }, `This page is Reptile Log ${APP_VERSION}. After files change on the site, a reload gets the new version when online; if the number here does not match what you uploaded, use the button.`),
-      h('div', { class: 'btns' }, h('button', { class: 'btn secondary', onclick: async () => { try { if ('serviceWorker' in navigator) { const regs = await navigator.serviceWorker.getRegistrations(); for (const r of regs) { await r.update(); if (r.waiting) r.waiting.postMessage('skipWaiting'); } } const keys = await caches.keys(); for (const k of keys) await caches.delete(k); } catch (e) { /* fall through to reload */ } location.reload(); } }, 'Check for updates and reload')),
+      h('div', { class: 'btns' }, h('button', { class: 'btn secondary', onclick: async () => { toast('Fetching the latest files'); try { const keys = await caches.keys(); for (const k of keys) await caches.delete(k); if ('serviceWorker' in navigator) { const regs = await navigator.serviceWorker.getRegistrations(); for (const r of regs) await r.unregister(); } for (const u of ['./', './index.html', './app.js', './core.js', './photos.js', './species.js', './license.js', './sw.js']) { try { await fetch(u, { cache: 'reload' }); } catch (e) { /* offline */ } } } catch (e) { /* fall through to reload */ } location.replace(location.pathname + '?r=' + Date.now()); } }, 'Check for updates and reload')),
       h('p', { class: 'muted small' }, `Reptile Log ${APP_VERSION}`));
   }
 
