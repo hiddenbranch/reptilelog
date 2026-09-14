@@ -88,7 +88,12 @@ details.plat .fault b{display:block}
 .preview{width:100%;border-radius:var(--radius);border:1px solid var(--line);display:block;margin:8px 0}
 .progress{height:6px;background:var(--panel);border-radius:3px;overflow:hidden;margin:8px 0 12px}
 .progress i{display:block;height:100%;background:var(--amber);width:0;transition:width .2s}
-.thumb{width:56px;height:56px;object-fit:cover;border-radius:4px;border:1px solid var(--line);background:var(--panel)}
+.thumb{width:56px;height:56px;object-fit:cover;border-radius:4px;border:1px solid var(--line);background:var(--panel);flex:none}
+.thumb.sm{width:40px;height:40px}
+.photo{width:100%;max-width:420px;aspect-ratio:4/3;object-fit:cover;border-radius:var(--radius);border:1px solid var(--line);display:block;margin:4px 0 6px}
+.photo-slot{display:inline-block}
+.photo-slot.thumb,.photo-slot.thumb.sm{background:var(--panel)}
+.photo-slot.photo{display:none}
 .rec{display:flex;gap:12px;align-items:flex-start;padding:12px 0;border-bottom:1px solid var(--line)}
 .rec .t{flex:1;min-width:0}
 .rec .t b{display:block}
@@ -129,6 +134,7 @@ nav.tabs button.on{color:var(--amber)}
   <button data-tab="report"><svg viewBox="0 0 24 24"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4z"/></svg>Report</button>
   <button data-tab="ref"><svg viewBox="0 0 24 24"><path d="M4 4h12a3 3 0 0 1 3 3v13H7a3 3 0 0 0-3 3z"/><path d="M4 4v16M9 8h6M9 12h6"/></svg>Reference</button>
 </nav>
+<script src="photos.js"></script>
 <script src="species.js"></script>
 <script src="license.js"></script>
 <script src="core.js"></script>

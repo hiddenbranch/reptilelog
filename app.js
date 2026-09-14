@@ -2,7 +2,7 @@
 (function () {
   'use strict';
   const C = window.RLCore;
-  const APP_VERSION = '1.2.0';
+  const APP_VERSION = '1.3.0';
   const PRO_REQUIRED = false;
   // Licence keys are signed offline and checked on the device. No payment provider, no server, no network call.
   const PUBLIC_KEY = {"kty":"EC","crv":"P-256","x":"REPLACE_WITH_YOUR_PUBLIC_KEY_X","y":"REPLACE_WITH_YOUR_PUBLIC_KEY_Y"};
@@ -68,6 +68,56 @@
   const canvasToBlob = (cv, q) => new Promise(res => cv.toBlob(res, 'image/jpeg', q || 0.8));
   function thumb(blob) { if (!blob) return null; const img = h('img', { class: 'thumb', alt: '' }); img.src = URL.createObjectURL(blob); return img; }
 
+
+  // ---------- species photos (Wikimedia Commons, cached on the phone) ----------
+  const Ph = window.RLPhotos;
+  const photoMem = {};
+  async function photosEnabled() { return await S.get('photos', true); }
+  async function speciesPhoto(sp) {
+    if (!sp) return null;
+    const key = 'photo:' + sp.name;
+    if (key in photoMem) return photoMem[key];
+    const cached = await DB.get('kv', key);
+    if (cached) { photoMem[key] = cached.value; return cached.value; }
+    if (!(await photosEnabled()) || !navigator.onLine) return null;
+    let rec = null;
+    try {
+      let summary = await (await fetch(Ph.SUMMARY_URL(sp.wiki))).json();
+      if (!summary || !summary.originalimage) {
+        const sr = await (await fetch(Ph.SEARCH_URL(sp.wiki + ' lizard OR snake OR gecko OR tortoise OR turtle OR frog'))).json();
+        const hit = sr && sr.query && sr.query.search && sr.query.search[0];
+        if (hit) summary = await (await fetch(Ph.SUMMARY_URL(hit.title))).json();
+      }
+      const file = Ph.fileNameFromUrl(summary && summary.originalimage && summary.originalimage.source);
+      if (file) {
+        const meta = Ph.parseCommons(await (await fetch(Ph.COMMONS_URL(file))).json(), file);
+        if (meta) {
+          rec = Object.assign({ article: summary.content_urls && summary.content_urls.desktop ? summary.content_urls.desktop.page : '' }, meta);
+          try { const r = await fetch(meta.thumb); if (r.ok) { const blob = await r.blob(); if (blob.size > 0 && blob.size < 1500000) rec.blob = blob; } } catch (e) { /* show by URL instead */ }
+        }
+      }
+    } catch (e) { rec = null; }
+    photoMem[key] = rec || false;
+    if (rec) await DB.put('kv', { key, value: rec });
+    return rec || null;
+  }
+  function photoImg(rec, cls) {
+    if (!rec) return null;
+    const img = h('img', { class: cls || 'thumb', alt: '', loading: 'lazy' });
+    img.src = rec.blob ? URL.createObjectURL(rec.blob) : rec.thumb;
+    return img;
+  }
+  function photoCredit(rec) {
+    if (!rec) return null;
+    return h('p', { class: 'muted small', style: 'margin:4px 0 8px' }, Ph.caption(rec).replace(', via Wikimedia Commons', ''), ', ', h('a', { href: rec.page, target: '_blank', rel: 'noopener' }, 'Wikimedia Commons'), rec.licenseUrl ? [' (', h('a', { href: rec.licenseUrl, target: '_blank', rel: 'noopener' }, 'licence'), ')'] : null);
+  }
+  // fill a placeholder element once the photo arrives, so lists render immediately
+  function photoSlot(sp, cls, withCredit) {
+    const slot = h('span', { class: 'photo-slot ' + (cls || 'thumb') });
+    speciesPhoto(sp).then(rec => { if (!rec) { slot.remove(); return; } slot.replaceWith(withCredit ? h('div', null, photoImg(rec, cls), photoCredit(rec)) : photoImg(rec, cls)); });
+    return slot;
+  }
+
   // ---------- log ----------
   async function renderLog() {
     const list = await animalsSorted();
@@ -118,7 +168,7 @@
     if (state.sub === 'new' || (state.sub && state.sub.startsWith('edit:'))) return animalForm(state.sub === 'new' ? null : await DB.get('animals', Number(state.sub.split(':')[1])), list);
     view.append(h('h2', null, 'Animals'), h('div', { class: 'btns' }, h('button', { class: 'btn', onclick: () => go('animals', 'new') }, 'Add an animal')));
     if (!list.length) return view.append(h('div', { class: 'empty' }, 'No animals yet. Each one gets a number that matches the log book.'));
-    for (const a of list) { const lf = await lastFeed(a.id); const fs = C.feedStatus(lf && lf.date, a.feedInterval, today()); view.append(h('div', { class: 'rec' }, h('div', { class: 't' }, h('b', null, `${a.num ? a.num + '  ' : ''}${a.name}`), h('div', { class: 'meta' }, [a.species, a.morph, a.sex && a.sex !== 'Unknown' ? a.sex : null].filter(Boolean).join(' \u00B7 ')), h('div', { style: 'margin-top:4px' }, statusBadge(fs))), h('button', { class: 'act', onclick: () => go('animals', 'edit:' + a.id) }, 'Edit'))); }
+    for (const a of list) { const lf = await lastFeed(a.id); const fs = C.feedStatus(lf && lf.date, a.feedInterval, today()); view.append(h('div', { class: 'rec' }, photoSlot(C.speciesByName(a.species), 'thumb'), h('div', { class: 't' }, h('b', null, `${a.num ? a.num + '  ' : ''}${a.name}`), h('div', { class: 'meta' }, [a.species, a.morph, a.sex && a.sex !== 'Unknown' ? a.sex : null].filter(Boolean).join(' \u00B7 ')), h('div', { style: 'margin-top:4px' }, statusBadge(fs))), h('button', { class: 'act', onclick: () => go('animals', 'edit:' + a.id) }, 'Edit'))); }
   }
   function animalForm(a, list) {
     const r = a || { num: list.length + 1, name: '', species: '', morph: '', sex: 'Unknown', stage: 'Adult', dob: '', acquired: '', location: '', targets: {}, uvb: 'None', uvbDate: '', feedInterval: 7, diet: '', supplements: '', refusal: '', misting: '', water: '', meds: '', handling: '', donot: '', watch: '', vet: '', notes: '', created: Date.now() };
@@ -133,7 +183,7 @@
       const sp = C.speciesByName(f.species.value); if (!sp) { preset.hidden = true; return; }
       preset.hidden = false; preset.innerHTML = '';
       const iv = stage.value === 'Juvenile' ? sp.juvInterval : sp.interval;
-      preset.append(h('b', null, sp.name + ' presets'), h('div', { class: 'small' }, `${sp.warm} / cool ${sp.cool} / ${sp.rh} \u00B7 UVB ${sp.uvb} \u00B7 feed every ${iv} d \u00B7 ${sp.size}, ${sp.life}`),
+      preset.append(photoSlot(sp, 'thumb', false), h('b', { style: 'display:block' }, sp.name + ' presets'), h('div', { class: 'small' }, `${sp.warm} / cool ${sp.cool} / ${sp.rh} \u00B7 UVB ${sp.uvb} \u00B7 feed every ${iv} d \u00B7 ${sp.size}, ${sp.life}`),
         h('div', { class: 'small', style: 'margin-top:6px' }, sp.note),
         h('div', { class: 'btns' }, h('button', { class: 'btn secondary', style: 'min-height:38px;font-size:14px', onclick: () => fill(sp, iv) }, 'Use these targets')));
       if (force) fill(sp, iv);
@@ -250,7 +300,8 @@
       const draw = () => { out.innerHTML = '';
         const list = C.searchSpecies(q.value).filter(s => groupSel.value === 'All' || s.group === groupSel.value);
         if (!list.length) return out.append(h('div', { class: 'empty' }, 'No species match that. Try the group filter, or the common name.'));
-        for (const s of list) out.append(h('details', { class: 'plat' }, h('summary', null, s.name), h('div', { class: 'body' },
+        for (const s of list) out.append(h('details', { class: 'plat' }, h('summary', null, photoSlot(s, 'thumb sm'), h('span', { style: 'margin-left:10px' }, s.name)), h('div', { class: 'body' },
+          photoSlot(s, 'photo', true),
           h('div', { class: 'tablewrap' }, h('table', { class: 'ref' }, h('tbody', null,
             [['Group', s.group], ['Warm / basking', s.warm + ' F'], ['Cool side', s.cool + ' F'], ['Night', s.night ? s.night + ' F' : 'n/a'], ['Humidity', s.rh + (s.rhShed ? ', ' + s.rhShed + '% in shed' : '')], ['UVB', s.uvb],
              ['Feeding, adult', 'every ' + s.interval + ' day' + (s.interval === 1 ? '' : 's')], ['Feeding, juvenile', 'every ' + s.juvInterval + ' day' + (s.juvInterval === 1 ? '' : 's')], ['Diet', s.diet], ['Supplements', s.supp], ['Adult size', s.size], ['Lifespan', s.life]]
@@ -276,6 +327,13 @@
 
   // ---------- settings ----------
   async function renderSettings() {
+    if (state.sub === 'credits') {
+      const all = (await DB.all('kv')).filter(r => String(r.key).startsWith('photo:') && r.value);
+      view.append(h('button', { class: 'back', onclick: () => go('settings') }, '\u2039 Settings'), h('h2', null, 'Photo credits'));
+      if (!all.length) return view.append(h('div', { class: 'empty' }, 'No photos loaded yet. Open a species in the Reference tab.'));
+      for (const r of all.sort((x, y) => x.key.localeCompare(y.key))) view.append(h('div', { class: 'rec' }, photoImg(r.value, 'thumb'), h('div', { class: 't' }, h('b', null, r.key.slice(6)), photoCredit(r.value))));
+      return;
+    }
     const f = {}; const mk = async (k, label, type) => { f[k] = h('input', { type: type || 'text', value: await S.get(k, '') }); return field(label, f[k]); };
     const key = h('input', { type: 'text', class: 'mono', value: await S.get('licenseKey', '') });
     view.append(h('h2', null, 'Settings'), h('h3', null, 'Owner details (go on the sitter handoff)'), await mk('ownerName', 'Your name'), await mk('ownerPhone', 'Your phone', 'tel'), await mk('vet', 'Vet and after-hours vet'), await mk('backup', 'If the sitter cannot reach you'),
@@ -284,6 +342,10 @@
       h('div', { class: 'btns' }, h('button', { class: 'btn secondary', onclick: async () => { const k = key.value.trim(); if (!k) return toast('Paste the key first');
         const r = await window.License.verify(k, PUBLIC_KEY, PRODUCT);
         if (r.valid) { await S.set('pro', true); await S.set('licenseKey', k); toast('Licence active'); go('settings'); } else toast(r.reason); } }, 'Activate')),
+      h('h3', null, 'Species photos'),
+      h('p', { class: 'muted small' }, 'Photos come from Wikimedia Commons the first time you open a species, then stay on the phone. Only free-licence images are shown, each with its author and licence.'),
+      h('label', { class: 'field' }, h('span', null, 'Load species photos (uses data once per species)'), (() => { const cb = h('input', { type: 'checkbox' }); photosEnabled().then(v => { cb.checked = !!v; }); cb.addEventListener('change', async () => { await S.set('photos', cb.checked); toast(cb.checked ? 'Photos on' : 'Photos off'); }); return cb; })()),
+      h('div', { class: 'btns' }, h('button', { class: 'btn secondary', onclick: () => go('settings', 'credits') }, 'Photo credits'), h('button', { class: 'btn secondary', onclick: async () => { const all = await DB.all('kv'); for (const r of all) if (String(r.key).startsWith('photo:')) await DB.del('kv', r.key); for (const k in photoMem) delete photoMem[k]; toast('Photo cache cleared'); } }, 'Clear photo cache')),
       h('h3', null, 'Sharing with a sitter (coming)'), h('p', { class: 'muted small' }, 'A later version adds accounts: you invite a sitter, they log from their own phone against your animals, and you see each day\'s entries as they happen. Until then, the handoff text and the daily book pages do the job.'),
       h('h3', null, 'Install on your phone'), h('p', { class: 'muted small' }, 'iPhone: Safari, Share, Add to Home Screen. Android: the Install button at the top, or the browser menu. Works without a connection once installed.'),
       h('h3', null, 'Your data'), h('p', { class: 'muted small' }, 'Animals, entries and photos live in this browser on this phone. Nothing is uploaded until you share it.'),
