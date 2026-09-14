@@ -1,19 +1,25 @@
-/* AV Field Tools service worker: app shell offline, CDN libraries cached after first use. */
-const VERSION = 'rlog-1.3.0';
-const SHELL = ['./', './index.html', './photos.js', './species.js', './license.js', './core.js', './app.js', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png'];
+/* Reptile Log service worker.
+   index.html: network first (a reload always gets the newest page when online), cache fallback offline.
+   Other shell files: cache first with background refresh. Wikimedia and CDN assets: network first, cached after. */
+const VERSION = 'rlog-1.4.0';
+const SHELL = ['./', './index.html', './photos.js', './license.js', './species.js', './core.js', './app.js', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(VERSION).then(c => c.addAll(SHELL)).then(() => self.skipWaiting())); });
-self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => k !== VERSION).map(k => caches.delete(k)))).then(() => self.clients.claim())); });
+self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => k !== VERSION && k !== VERSION + '-lib').map(k => caches.delete(k)))).then(() => self.clients.claim())); });
+self.addEventListener('message', e => { if (e.data === 'skipWaiting') self.skipWaiting(); });
 self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
   if (e.request.method !== 'GET') return;
   if (url.origin === location.origin) {
-    // shell: cache first, refresh in the background
-    e.respondWith(caches.match(e.request).then(hit => {
-      const net = fetch(e.request).then(res => { if (res.ok) caches.open(VERSION).then(c => c.put(e.request, res.clone())); return res; }).catch(() => hit);
-      return hit || net;
-    }));
+    const isPage = e.request.mode === 'navigate' || url.pathname.endsWith('/') || url.pathname.endsWith('index.html');
+    if (isPage) {
+      e.respondWith(fetch(e.request).then(res => { if (res.ok) caches.open(VERSION).then(c => c.put(e.request, res.clone())); return res; }).catch(() => caches.match(e.request).then(hit => hit || caches.match('./index.html'))));
+    } else {
+      e.respondWith(caches.match(e.request).then(hit => {
+        const net = fetch(e.request).then(res => { if (res.ok) caches.open(VERSION).then(c => c.put(e.request, res.clone())); return res; }).catch(() => hit);
+        return hit || net;
+      }));
+    }
   } else if (/cdnjs\.cloudflare\.com|jsdelivr\.net|unpkg\.com|tessdata|upload\.wikimedia\.org/.test(url.host + url.pathname)) {
-    // libraries and OCR data: network first, then cache
     e.respondWith(fetch(e.request).then(res => { if (res.ok || res.type === 'opaque') caches.open(VERSION + '-lib').then(c => c.put(e.request, res.clone())); return res; }).catch(() => caches.match(e.request)));
   }
 });

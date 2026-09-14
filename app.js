@@ -2,7 +2,7 @@
 (function () {
   'use strict';
   const C = window.RLCore;
-  const APP_VERSION = '1.3.0';
+  const APP_VERSION = '1.4.0';
   const PRO_REQUIRED = false;
   // Licence keys are signed offline and checked on the device. No payment provider, no server, no network call.
   const PUBLIC_KEY = {"kty":"EC","crv":"P-256","x":"REPLACE_WITH_YOUR_PUBLIC_KEY_X","y":"REPLACE_WITH_YOUR_PUBLIC_KEY_Y"};
@@ -111,11 +111,43 @@
     if (!rec) return null;
     return h('p', { class: 'muted small', style: 'margin:4px 0 8px' }, Ph.caption(rec).replace(', via Wikimedia Commons', ''), ', ', h('a', { href: rec.page, target: '_blank', rel: 'noopener' }, 'Wikimedia Commons'), rec.licenseUrl ? [' (', h('a', { href: rec.licenseUrl, target: '_blank', rel: 'noopener' }, 'licence'), ')'] : null);
   }
-  // fill a placeholder element once the photo arrives, so lists render immediately
+  // Photo slots load lazily (when scrolled into view) and no more than three at a time, so opening the
+  // 82-species guide does not fire 250 requests at Wikimedia and get rate-limited.
+  const photoQueue = []; let photoActive = 0;
+  function pumpPhotos() { while (photoActive < 3 && photoQueue.length) { const job = photoQueue.shift(); photoActive++; job().finally(() => { photoActive--; pumpPhotos(); }); } }
+  const slotObserver = ('IntersectionObserver' in window) ? new IntersectionObserver(entries => { for (const en of entries) if (en.isIntersecting) { slotObserver.unobserve(en.target); en.target._load && en.target._load(); } }, { rootMargin: '200px' }) : null;
   function photoSlot(sp, cls, withCredit) {
     const slot = h('span', { class: 'photo-slot ' + (cls || 'thumb') });
-    speciesPhoto(sp).then(rec => { if (!rec) { slot.remove(); return; } slot.replaceWith(withCredit ? h('div', null, photoImg(rec, cls), photoCredit(rec)) : photoImg(rec, cls)); });
+    if (!sp) return slot;
+    let started = false;
+    slot._load = () => { if (started) return; started = true; photoQueue.push(() => speciesPhoto(sp).then(rec => { if (!rec) { slot.remove(); return; } slot.replaceWith(withCredit ? h('div', null, photoImg(rec, cls), photoCredit(rec)) : photoImg(rec, cls)); }).catch(() => slot.remove())); pumpPhotos(); };
+    if (slotObserver) slotObserver.observe(slot); else slot._load();
     return slot;
+  }
+  // step-by-step diagnostic for the settings screen
+  async function photoDiagnostic(sp, log) {
+    const step = (m) => log.append(h('div', { class: 'small mono' }, m));
+    try {
+      step(`1. Species: ${sp.name}, article "${sp.wiki}"`);
+      step(`   online: ${navigator.onLine}, photos enabled: ${await photosEnabled()}`);
+      const sUrl = Ph.SUMMARY_URL(sp.wiki); step(`2. GET ${sUrl}`);
+      const sRes = await fetch(sUrl); step(`   HTTP ${sRes.status}`);
+      const summary = await sRes.json();
+      const orig = summary && summary.originalimage && summary.originalimage.source; step(`   lead image: ${orig || 'none (article has no image, or the title is wrong)'}`);
+      if (!orig) return;
+      const file = Ph.fileNameFromUrl(orig); step(`3. File: ${file}`);
+      const cUrl = Ph.COMMONS_URL(file); step(`   GET ${cUrl.slice(0, 90)}...`);
+      const cRes = await fetch(cUrl); step(`   HTTP ${cRes.status}`);
+      const cj = await cRes.json();
+      const pg = cj.query && cj.query.pages && Object.values(cj.query.pages)[0]; const md = pg && pg.imageinfo && pg.imageinfo[0] && pg.imageinfo[0].extmetadata;
+      step(`   licence: ${md && md.LicenseShortName ? md.LicenseShortName.value : 'not found (file is not on Commons)'}; author: ${md && md.Artist ? Ph.stripHtml(md.Artist.value).slice(0, 40) : '-'}`);
+      const meta = Ph.parseCommons(cj, file); step(`   free licence: ${meta ? 'yes' : 'no, withheld'}`);
+      if (!meta) return;
+      step(`4. GET thumbnail ${meta.thumb.slice(0, 80)}...`);
+      const tRes = await fetch(meta.thumb); step(`   HTTP ${tRes.status}, type ${tRes.headers.get('content-type')}`);
+      const blob = await tRes.blob(); step(`   ${Math.round(blob.size / 1024)} KB`);
+      step('5. Result: photo would display. If it still does not, the page is stale: use Check for updates below.');
+    } catch (e) { step(`   FAILED: ${e.name}: ${e.message}`); step('   A TypeError "Failed to fetch" here means the browser blocked the request (offline, a content blocker, or a network that filters Wikimedia).'); }
   }
 
   // ---------- log ----------
@@ -345,11 +377,14 @@
       h('h3', null, 'Species photos'),
       h('p', { class: 'muted small' }, 'Photos come from Wikimedia Commons the first time you open a species, then stay on the phone. Only free-licence images are shown, each with its author and licence.'),
       h('label', { class: 'field' }, h('span', null, 'Load species photos (uses data once per species)'), (() => { const cb = h('input', { type: 'checkbox' }); photosEnabled().then(v => { cb.checked = !!v; }); cb.addEventListener('change', async () => { await S.set('photos', cb.checked); toast(cb.checked ? 'Photos on' : 'Photos off'); }); return cb; })()),
-      h('div', { class: 'btns' }, h('button', { class: 'btn secondary', onclick: () => go('settings', 'credits') }, 'Photo credits'), h('button', { class: 'btn secondary', onclick: async () => { const all = await DB.all('kv'); for (const r of all) if (String(r.key).startsWith('photo:')) await DB.del('kv', r.key); for (const k in photoMem) delete photoMem[k]; toast('Photo cache cleared'); } }, 'Clear photo cache')),
+      h('div', { class: 'btns' }, h('button', { class: 'btn secondary', onclick: async () => { const log = h('div', { class: 'lock', style: 'margin-top:8px' }); view.append(log); log.append(h('b', null, 'Photo test')); await photoDiagnostic(C.speciesByName('Ball python'), log); } }, 'Run photo test'), h('button', { class: 'btn secondary', onclick: () => go('settings', 'credits') }, 'Photo credits'), h('button', { class: 'btn secondary', onclick: async () => { const all = await DB.all('kv'); for (const r of all) if (String(r.key).startsWith('photo:')) await DB.del('kv', r.key); for (const k in photoMem) delete photoMem[k]; toast('Photo cache cleared'); } }, 'Clear photo cache')),
       h('h3', null, 'Sharing with a sitter (coming)'), h('p', { class: 'muted small' }, 'A later version adds accounts: you invite a sitter, they log from their own phone against your animals, and you see each day\'s entries as they happen. Until then, the handoff text and the daily book pages do the job.'),
       h('h3', null, 'Install on your phone'), h('p', { class: 'muted small' }, 'iPhone: Safari, Share, Add to Home Screen. Android: the Install button at the top, or the browser menu. Works without a connection once installed.'),
       h('h3', null, 'Your data'), h('p', { class: 'muted small' }, 'Animals, entries and photos live in this browser on this phone. Nothing is uploaded until you share it.'),
       h('div', { class: 'btns' }, h('button', { class: 'btn danger', onclick: async () => { if (confirm('Delete every animal, entry and photo on this phone?')) { await DB.clearAll(); S.cache = {}; state.animalId = null; toast('Cleared'); go('log'); } } }, 'Delete all data')),
+      h('h3', null, 'Updates'),
+      h('p', { class: 'muted small' }, `This page is Reptile Log ${APP_VERSION}. After files change on the site, a reload gets the new version when online; if the number here does not match what you uploaded, use the button.`),
+      h('div', { class: 'btns' }, h('button', { class: 'btn secondary', onclick: async () => { try { if ('serviceWorker' in navigator) { const regs = await navigator.serviceWorker.getRegistrations(); for (const r of regs) { await r.update(); if (r.waiting) r.waiting.postMessage('skipWaiting'); } } const keys = await caches.keys(); for (const k of keys) await caches.delete(k); } catch (e) { /* fall through to reload */ } location.reload(); } }, 'Check for updates and reload')),
       h('p', { class: 'muted small' }, `Reptile Log ${APP_VERSION}`));
   }
 
