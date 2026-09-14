@@ -4,7 +4,9 @@
   const C = window.RLCore;
   const APP_VERSION = '1.0.0';
   const PRO_REQUIRED = false;
-  const LS_VALIDATE_URL = 'https://api.lemonsqueezy.com/v1/licenses/validate';
+  // Licence keys are signed offline and checked on the device. No payment provider, no server, no network call.
+  const PUBLIC_KEY = {"kty":"EC","crv":"P-256","x":"REPLACE_WITH_YOUR_PUBLIC_KEY_X","y":"REPLACE_WITH_YOUR_PUBLIC_KEY_Y"};
+  const PRODUCT = 'rlog';
   const CDN = { jsqr: 'https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.min.js', jszip: 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js' };
 
   const $ = (sel, root) => (root || document).querySelector(sel);
@@ -94,7 +96,13 @@
     else if (type === 'shed') { const result = sel(C.SHED_RESULT, 'Complete'), where = h('input', { type: 'text', placeholder: 'toes, tail tip, eye caps' }), boosted = h('input', { type: 'checkbox' }); body = [field('Result', result), field('Stuck where (if any)', where), h('label', { class: 'field' }, h('span', null, 'Humidity boosted'), boosted)]; collect = () => ({ result: result.value, where: where.value.trim(), boosted: boosted.checked }); }
     else if (type === 'enclosure') { const hot = h('input', { type: 'number', inputmode: 'decimal', placeholder: a.targets && a.targets.hot ? 'target ' + a.targets.hot : '' }), cool = h('input', { type: 'number', inputmode: 'decimal', placeholder: a.targets && a.targets.cool ? 'target ' + a.targets.cool : '' }), bask = h('input', { type: 'number', inputmode: 'decimal', placeholder: a.targets && a.targets.bask ? 'target ' + a.targets.bask : '' }), rh = h('input', { type: 'number', inputmode: 'decimal', placeholder: a.targets && a.targets.rh ? 'target ' + a.targets.rh : '' });
       const cb = {}; const boxes = ['water', 'spot', 'full', 'uvb'].map(k => { cb[k] = h('input', { type: 'checkbox' }); return h('label', { class: 'field' }, h('span', null, { water: 'Water changed', spot: 'Spot cleaned', full: 'Full clean', uvb: 'UVB checked or replaced' }[k]), cb[k]); });
-      body = [h('div', { class: 'row' }, field('Hot side (F)', hot), field('Cool side (F)', cool)), h('div', { class: 'row' }, field('Basking (F)', bask), field('Humidity (%)', rh)), h('div', { class: 'row' }, boxes)];
+      const flags = h('div');
+      const checkAll = () => { flags.innerHTML = ''; const t = a.targets || {};
+        [['Hot side', hot, t.hot, 3], ['Cool side', cool, t.cool, 3], ['Basking', bask, t.bask, 5], ['Humidity', rh, t.rh, 10]].forEach(([label, input, target, tol]) => {
+          const r = C.checkReading(input.value, target, tol); if (!r || r.state === 'ok') return;
+          flags.append(h('div', { class: 'note' }, `${label} is ${Math.abs(r.delta)} ${label === 'Humidity' ? 'points' : 'degrees'} ${r.state === 'high' ? 'above' : 'below'} the ${target} target for ${a.name}.`)); }); };
+      [hot, cool, bask, rh].forEach(i => i.addEventListener('input', checkAll));
+      body = [h('div', { class: 'row' }, field('Hot side (F)', hot), field('Cool side (F)', cool)), h('div', { class: 'row' }, field('Basking (F)', bask), field('Humidity (%)', rh)), flags, h('div', { class: 'row' }, boxes)];
       collect = () => ({ hot: hot.value, cool: cool.value, bask: bask.value, rh: rh.value, water: cb.water.checked, spot: cb.spot.checked, full: cb.full.checked, uvb: cb.uvb.checked }); }
     else { const kind = sel(C.HEALTH_TYPE, 'Observation'), text = h('textarea', { placeholder: 'what you saw, where, how long; what you did; dose' }), outcome = sel(['', 'Resolved', 'Ongoing', 'Monitoring', 'Referred'], ''); body = [field('Type', kind), field('Details', text), field('Outcome', outcome)]; collect = () => { if (!text.value.trim()) { toast('Write what you saw'); return null; } return { kind: kind.value, text: text.value.trim(), outcome: outcome.value }; }; }
     return h('div', null, h('h3', null, { feed: 'Feeding', weight: 'Weight', shed: 'Shed', enclosure: 'Enclosure reading', health: 'Health entry' }[type] + ' for ' + a.name), field('Date', date), body, field('Note', note), photoIn, photoBtn,
@@ -110,22 +118,42 @@
     for (const a of list) { const lf = await lastFeed(a.id); const fs = C.feedStatus(lf && lf.date, a.feedInterval, today()); view.append(h('div', { class: 'rec' }, h('div', { class: 't' }, h('b', null, `${a.num ? a.num + '  ' : ''}${a.name}`), h('div', { class: 'meta' }, [a.species, a.morph, a.sex && a.sex !== 'Unknown' ? a.sex : null].filter(Boolean).join(' \u00B7 ')), h('div', { style: 'margin-top:4px' }, statusBadge(fs))), h('button', { class: 'act', onclick: () => go('animals', 'edit:' + a.id) }, 'Edit'))); }
   }
   function animalForm(a, list) {
-    const r = a || { num: list.length + 1, name: '', species: '', morph: '', sex: 'Unknown', dob: '', acquired: '', location: '', targets: {}, uvb: 'None', uvbDate: '', feedInterval: 7, diet: '', supplements: '', refusal: '', misting: '', water: '', meds: '', handling: '', donot: '', watch: '', vet: '', notes: '', created: Date.now() };
+    const r = a || { num: list.length + 1, name: '', species: '', morph: '', sex: 'Unknown', stage: 'Adult', dob: '', acquired: '', location: '', targets: {}, uvb: 'None', uvbDate: '', feedInterval: 7, diet: '', supplements: '', refusal: '', misting: '', water: '', meds: '', handling: '', donot: '', watch: '', vet: '', notes: '', created: Date.now() };
     const f = {}; const mk = (k, label, type, extra) => { f[k] = h('input', Object.assign({ type: type || 'text', value: r[k] || '' }, extra || {})); return field(label, f[k]); };
     const t = r.targets || {}; const tg = {}; const mkT = (k, label) => { tg[k] = h('input', { type: 'number', inputmode: 'decimal', value: t[k] || '' }); return field(label, tg[k]); };
     const sex = sel(C.SEX, r.sex || 'Unknown'), uvb = sel(['None', 'Low (2 to 5%)', 'Medium (5 to 7%)', 'High (10 to 14%)'], r.uvb || 'None');
     const speciesList = h('datalist', { id: 'speciesList' }, C.SPECIES.map(s => h('option', { value: s.name })));
-    f.species = h('input', { type: 'text', value: r.species || '', list: 'speciesList' });
-    f.species.addEventListener('change', () => { const s = C.SPECIES.find(x => x.name === f.species.value); if (s && !a) { f.feedInterval.value = s.interval; if (!f.diet.value) f.diet.value = s.diet; } });
+    f.species = h('input', { type: 'text', value: r.species || '', list: 'speciesList', placeholder: 'start typing, or pick from the list' });
+    const stage = sel(['Adult', 'Juvenile'], r.stage || 'Adult');
+    const preset = h('div', { class: 'note', hidden: true });
+    function applySpecies(force) {
+      const sp = C.speciesByName(f.species.value); if (!sp) { preset.hidden = true; return; }
+      preset.hidden = false; preset.innerHTML = '';
+      const iv = stage.value === 'Juvenile' ? sp.juvInterval : sp.interval;
+      preset.append(h('b', null, sp.name + ' presets'), h('div', { class: 'small' }, `${sp.warm} / cool ${sp.cool} / ${sp.rh} \u00B7 UVB ${sp.uvb} \u00B7 feed every ${iv} d \u00B7 ${sp.size}, ${sp.life}`),
+        h('div', { class: 'small', style: 'margin-top:6px' }, sp.note),
+        h('div', { class: 'btns' }, h('button', { class: 'btn secondary', style: 'min-height:38px;font-size:14px', onclick: () => fill(sp, iv) }, 'Use these targets')));
+      if (force) fill(sp, iv);
+    }
+    function fill(sp, iv) {
+      tg.hot.value = sp.targets.hot || ''; tg.cool.value = sp.targets.cool || ''; tg.bask.value = sp.targets.bask || ''; tg.rh.value = sp.targets.rh || '';
+      f.feedInterval.value = iv; if (!f.diet.value) f.diet.value = sp.diet; if (!f.supplements.value && sp.supp) f.supplements.value = sp.supp;
+      if (!f.notes.value && sp.note) f.notes.value = sp.note;
+      const u = { 'Optional, low': 'Low (2 to 5%)', 'Required, medium': 'Medium (5 to 7%)', 'Required, high': 'High (10 to 14%)', 'None': 'None' }[sp.uvb]; if (u) uvb.value = u;
+      toast('Targets filled from ' + sp.name);
+    }
+    f.species.addEventListener('change', () => applySpecies(!a));
+    f.species.addEventListener('input', () => applySpecies(false));
+    stage.addEventListener('change', () => applySpecies(false));
     view.append(h('button', { class: 'back', onclick: () => go('animals') }, '\u2039 Animals'), h('h2', null, a ? 'Edit ' + a.name : 'New animal'), speciesList,
       h('div', { class: 'row' }, mk('num', 'Number (matches the book)', 'number'), mk('name', 'Name')),
-      field('Species', f.species), h('div', { class: 'row' }, mk('morph', 'Morph or locality'), field('Sex', sex)),
+      field('Species', f.species), preset, h('div', { class: 'row' }, field('Life stage', stage), mk('morph', 'Morph or locality')), h('div', { class: 'row' }, field('Sex', sex), h('div')),
       h('div', { class: 'row' }, mk('dob', 'Born or hatched', 'date'), mk('acquired', 'Acquired', 'date')), mk('location', 'Enclosure and where it is'),
       h('h3', null, 'Targets'), h('div', { class: 'row' }, mkT('hot', 'Hot side (F)'), mkT('cool', 'Cool side (F)')), h('div', { class: 'row' }, mkT('bask', 'Basking (F)'), mkT('rh', 'Humidity (%)')),
       h('div', { class: 'row' }, field('UVB', uvb), mk('uvbDate', 'UVB installed', 'date')),
       h('h3', null, 'Feeding'), h('div', { class: 'row' }, mk('feedInterval', 'Feed every (days)', 'number', { inputmode: 'numeric' }), mk('supplements', 'Supplement rotation')), mk('diet', 'What and how much'), mk('refusal', 'If it refuses'),
       h('h3', null, 'For a sitter'), mk('water', 'Water routine'), mk('misting', 'Misting'), mk('meds', 'Medication (or none)'), mk('handling', 'Handling'), mk('donot', 'Do not'), mk('watch', 'Call me if'), mk('vet', 'Vet and phone'), mk('notes', 'Notes'),
-      h('div', { class: 'btns' }, h('button', { class: 'btn', onclick: async () => { for (const k in f) r[k] = f[k].value.trim(); r.num = Number(r.num) || null; r.feedInterval = Number(r.feedInterval) || null; r.sex = sex.value; r.uvb = uvb.value; r.targets = Object.fromEntries(Object.keys(tg).map(k => [k, tg[k].value])); if (!r.name) return toast('Give the animal a name'); const id = await DB.put('animals', r); state.animalId = r.id || id; await S.set('lastAnimal', state.animalId); toast(a ? 'Saved' : 'Animal added'); go('animals'); } }, a ? 'Save' : 'Add animal'),
+      h('div', { class: 'btns' }, h('button', { class: 'btn', onclick: async () => { for (const k in f) r[k] = f[k].value.trim(); r.num = Number(r.num) || null; r.feedInterval = Number(r.feedInterval) || null; r.sex = sex.value; r.uvb = uvb.value; r.stage = stage.value; r.targets = Object.fromEntries(Object.keys(tg).map(k => [k, tg[k].value])); if (!r.name) return toast('Give the animal a name'); const id = await DB.put('animals', r); state.animalId = r.id || id; await S.set('lastAnimal', state.animalId); toast(a ? 'Saved' : 'Animal added'); go('animals'); } }, a ? 'Save' : 'Add animal'),
         a ? h('button', { class: 'btn danger', onclick: async () => { if (!confirm('Delete this animal and every log entry?')) return; for (const s of ['entries', 'pages']) { const rows = await DB.byAnimal(s, a.id); for (const x of rows) await DB.del(s, x.id); } await DB.del('animals', a.id); state.animalId = null; go('animals'); } }, 'Delete') : null));
   }
 
@@ -195,7 +223,7 @@
     { id: 'due', title: 'Next feeding date', fields: [{ key: 'last', label: 'Last fed (YYYY-MM-DD)', value: today(), type: 'text' }, { key: 'int', label: 'Interval (days)', value: 12 }], compute: v => [{ l: 'Next feeding', v: C.addDays(v.last, Number(v.int)) }, { l: 'Days since', v: `${C.daysBetween(v.last, today())}` }] }
   ];
   const REFS = [
-    { id: 'species', title: 'Species targets (commonly published)', cols: ['Species', 'Warm / basking F', 'Cool F', 'Humidity', 'UVB', 'Diet, adult'], rows: C.SPECIES.map(s => [s.name, s.warm, s.cool, s.rh, s.uvb, s.diet]) },
+    { id: 'species', title: 'Species guide', species: true },
     { id: 'signs', title: 'Signs to watch', cols: ['What you see', 'Often points to', 'What to do'], rows: C.SIGNS },
     { id: 'emergency', title: 'Emergency list', bullets: C.EMERGENCY, intro: 'Call the vet now, and the owner if you are the sitter.' },
     { id: 'feeding', title: 'Feeding and supplements', bullets: C.FEEDING_NOTES },
@@ -211,6 +239,24 @@
       const update = () => { readout.innerHTML = ''; const v = {}; for (const f of t.fields) v[f.key] = f.type === 'text' ? vals[f.key] : Number(vals[f.key]); let res; try { res = t.compute(v); } catch (e) { res = [{ l: 'Check the inputs', v: '-', tone: 'bad' }]; } for (const r of res) readout.append(h('div', { class: 'line ' + (r.tone || '') }, h('span', { class: 'l' }, r.l, r.n ? h('span', { class: 'n' }, r.n) : null), h('span', { class: 'v' }, r.v))); };
       view.append(h('button', { class: 'back', onclick: () => go('ref') }, '\u2039 Reference'), h('h2', null, t.title), readout, t.fields.map(f => field(f.label, h('input', { type: f.type === 'text' ? 'text' : 'number', inputmode: f.type === 'text' ? 'text' : 'decimal', step: 'any', value: vals[f.key], oninput: e => { vals[f.key] = e.target.value; update(); } }))));
       update(); return;
+    }
+    if (state.sub === 'species') {
+      view.append(h('button', { class: 'back', onclick: () => go('ref') }, '\u2039 Reference'), h('h2', null, 'Species guide'));
+      const q = h('input', { type: 'search', placeholder: `search ${C.SPECIES.length} species` }); const groupSel = sel(['All'].concat(C.speciesGroups()), 'All');
+      const out = h('div');
+      const draw = () => { out.innerHTML = '';
+        const list = C.searchSpecies(q.value).filter(s => groupSel.value === 'All' || s.group === groupSel.value);
+        if (!list.length) return out.append(h('div', { class: 'empty' }, 'No species match that. Try the group filter, or the common name.'));
+        for (const s of list) out.append(h('details', { class: 'plat' }, h('summary', null, s.name), h('div', { class: 'body' },
+          h('div', { class: 'tablewrap' }, h('table', { class: 'ref' }, h('tbody', null,
+            [['Group', s.group], ['Warm / basking', s.warm + ' F'], ['Cool side', s.cool + ' F'], ['Night', s.night ? s.night + ' F' : 'n/a'], ['Humidity', s.rh + (s.rhShed ? ', ' + s.rhShed + '% in shed' : '')], ['UVB', s.uvb],
+             ['Feeding, adult', 'every ' + s.interval + ' day' + (s.interval === 1 ? '' : 's')], ['Feeding, juvenile', 'every ' + s.juvInterval + ' day' + (s.juvInterval === 1 ? '' : 's')], ['Diet', s.diet], ['Supplements', s.supp], ['Adult size', s.size], ['Lifespan', s.life]]
+              .map(row => h('tr', null, h('th', { style: 'width:34%' }, row[0]), h('td', null, row[1])))))),
+          h('p', { style: 'margin-top:8px' }, s.note)))); };
+      q.addEventListener('input', draw); groupSel.addEventListener('change', draw);
+      view.append(h('div', { class: 'row' }, field('Search', q), field('Group', groupSel)), out,
+        h('p', { class: 'muted small' }, 'Commonly published husbandry guidance for healthy animals, not veterinary advice. A current species care guide and a reptile vet outrank this screen.'));
+      draw(); return;
     }
     if (state.sub) {
       const r = REFS.find(x => x.id === state.sub); if (!r) return go('ref');
@@ -232,7 +278,9 @@
     view.append(h('h2', null, 'Settings'), h('h3', null, 'Owner details (go on the sitter handoff)'), await mk('ownerName', 'Your name'), await mk('ownerPhone', 'Your phone', 'tel'), await mk('vet', 'Vet and after-hours vet'), await mk('backup', 'If the sitter cannot reach you'),
       h('div', { class: 'btns' }, h('button', { class: 'btn', onclick: async () => { for (const k in f) await S.set(k, f[k].value.trim()); toast('Saved'); } }, 'Save')),
       h('h3', null, PRO_REQUIRED ? 'License' : 'License (not required in this build)'), field('License key', key),
-      h('div', { class: 'btns' }, h('button', { class: 'btn secondary', onclick: async () => { const k = key.value.trim(); if (!k) return toast('Paste the key first'); try { const r = await fetch(LS_VALIDATE_URL, { method: 'POST', headers: { Accept: 'application/json', 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'license_key=' + encodeURIComponent(k) }); const j = await r.json(); if (j.valid) { await S.set('pro', true); await S.set('licenseKey', k); toast('License active'); } else toast(j.error || 'That key is not valid'); } catch (e) { toast('Could not reach the license server.'); } } }, 'Activate')),
+      h('div', { class: 'btns' }, h('button', { class: 'btn secondary', onclick: async () => { const k = key.value.trim(); if (!k) return toast('Paste the key first');
+        const r = await window.License.verify(k, PUBLIC_KEY, PRODUCT);
+        if (r.valid) { await S.set('pro', true); await S.set('licenseKey', k); toast('Licence active'); go('settings'); } else toast(r.reason); } }, 'Activate')),
       h('h3', null, 'Sharing with a sitter (coming)'), h('p', { class: 'muted small' }, 'A later version adds accounts: you invite a sitter, they log from their own phone against your animals, and you see each day\'s entries as they happen. Until then, the handoff text and the daily book pages do the job.'),
       h('h3', null, 'Install on your phone'), h('p', { class: 'muted small' }, 'iPhone: Safari, Share, Add to Home Screen. Android: the Install button at the top, or the browser menu. Works without a connection once installed.'),
       h('h3', null, 'Your data'), h('p', { class: 'muted small' }, 'Animals, entries and photos live in this browser on this phone. Nothing is uploaded until you share it.'),

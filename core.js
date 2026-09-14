@@ -39,19 +39,23 @@
   C.SEX = ['Unknown', 'Male', 'Female'];
 
   // ---------- reference ----------
-  C.SPECIES = [
-    { name: 'Ball python', warm: '88 to 92 warm side', cool: '78 to 80', rh: '55 to 65%, more in shed', uvb: 'Optional, low', diet: 'Frozen-thawed rodent every 10 to 14 days', interval: 12 },
-    { name: 'Corn snake', warm: '84 to 88 warm side', cool: '72 to 78', rh: '40 to 60%', uvb: 'Optional, low', diet: 'Frozen-thawed mouse every 7 to 14 days', interval: 10 },
-    { name: 'King / milk snake', warm: '84 to 88 warm side', cool: '72 to 78', rh: '40 to 60%', uvb: 'Optional, low', diet: 'Frozen-thawed rodent every 7 to 14 days', interval: 10 },
-    { name: 'Boa constrictor', warm: '88 to 92 warm side', cool: '78 to 82', rh: '55 to 70%', uvb: 'Optional, low', diet: 'Frozen-thawed rodent every 2 to 4 weeks', interval: 21 },
-    { name: 'Leopard gecko', warm: '88 to 92 floor, warm hide', cool: '75 to 80', rh: '30 to 40%, humid hide', uvb: 'Optional, low', diet: 'Dusted insects every 2 to 3 days', interval: 3 },
-    { name: 'Crested gecko', warm: '72 to 78 ambient, under 82', cool: '65 to 72 night', rh: '60 to 80%, dry-out daily', uvb: 'Optional, low', diet: 'Complete gecko diet every other day, insects weekly', interval: 2 },
-    { name: 'Bearded dragon', warm: '100 to 110 basking', cool: '75 to 85', rh: '30 to 40%', uvb: 'Required, high', diet: 'Mostly greens, insects 2 to 3 times a week', interval: 1 },
-    { name: 'Blue-tongue skink', warm: '95 to 105 basking', cool: '75 to 85', rh: '40 to 60% (Indonesian higher)', uvb: 'Required, medium', diet: 'Omnivore mix 2 to 3 times a week', interval: 3 },
-    { name: 'Veiled chameleon', warm: '85 to 95 basking', cool: '72 to 80', rh: '50 to 70%, misted, dripper', uvb: 'Required, medium', diet: 'Dusted insects, adults every other day', interval: 2 },
-    { name: 'Russian tortoise', warm: '95 to 100 basking', cool: '70 to 80', rh: '40 to 60%', uvb: 'Required, high', diet: 'Weeds and greens daily, no fruit', interval: 1 },
-    { name: 'Red-eared slider', warm: '90 to 95 basking (dock)', cool: 'Water 75 to 80', rh: 'Aquatic', uvb: 'Required, high', diet: 'Pellets and greens, adults every other day', interval: 2 }
-  ];
+  // Species data lives in species.js (43 entries with targets, diet, supplements and notes).
+  C.SPECIES = (typeof module !== 'undefined' && module.exports) ? require('./species.js') : (root.RLSpecies || []);
+  C.speciesByName = name => C.SPECIES.find(s => s.name === name) || null;
+  C.speciesGroups = () => [...new Set(C.SPECIES.map(s => s.group))];
+  C.searchSpecies = function (q) {
+    const t = String(q || '').trim().toLowerCase();
+    if (!t) return C.SPECIES;
+    return C.SPECIES.filter(s => s.name.toLowerCase().includes(t) || s.group.toLowerCase().includes(t));
+  };
+  // compare a logged reading against the animal's target; tolerance in degrees / percent
+  C.checkReading = function (value, target, tol) {
+    const v = Number(value), t = Number(target);
+    if (!v || !t) return null;
+    const d = v - t;
+    if (Math.abs(d) <= (tol || 3)) return { state: 'ok', delta: r1(d) };
+    return { state: d > 0 ? 'high' : 'low', delta: r1(d) };
+  };
   C.PREY = [['Pinky mouse', '1 to 3 g'], ['Fuzzy mouse', '3 to 6 g'], ['Hopper mouse', '6 to 10 g'], ['Adult mouse', '18 to 30 g'], ['Jumbo mouse', '30 to 45 g'], ['Rat pup', '5 to 10 g'], ['Weaned rat', '15 to 30 g'], ['Small rat', '30 to 60 g'], ['Medium rat', '60 to 120 g'], ['Large rat', '120 to 200 g']];
   C.SIGNS = [
     ['Wheezing, bubbles at nose or mouth, open-mouth breathing', 'Respiratory infection', 'Check temperatures and humidity, then a vet within days.'],
