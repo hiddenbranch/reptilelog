@@ -2,7 +2,7 @@
 (function () {
   'use strict';
   const C = window.RLCore;
-  const APP_VERSION = '1.4.2';
+  const APP_VERSION = '1.5.0';
   const PRO_REQUIRED = false;
   // Licence keys are signed offline and checked on the device. No payment provider, no server, no network call.
   const PUBLIC_KEY = {"kty":"EC","crv":"P-256","x":"REPLACE_WITH_YOUR_PUBLIC_KEY_X","y":"REPLACE_WITH_YOUR_PUBLIC_KEY_Y"};
@@ -101,11 +101,33 @@
     if (rec) await DB.put('kv', { key, value: rec });
     return rec || null;
   }
-  function photoImg(rec, cls) {
+  function photoImg(rec, cls, name) {
     if (!rec) return null;
-    const img = h('img', { class: cls || 'thumb', alt: '', loading: 'lazy' });
+    const img = h('img', { class: (cls || 'thumb') + ' zoomable', alt: name ? name + ' photo, tap to enlarge' : 'tap to enlarge', loading: 'lazy', role: 'button', tabindex: '0' });
     img.src = rec.blob ? URL.createObjectURL(rec.blob) : rec.thumb;
+    const open = e => { e.preventDefault(); e.stopPropagation(); lightbox(rec, name); };
+    img.addEventListener('click', open); img.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') open(e); });
     return img;
+  }
+  // Commons thumbnail URLs carry their width in the path; ask for a larger one for the lightbox and fall back to what we have.
+  function largerUrl(rec) { return rec.thumb && /\/\d+px-/.test(rec.thumb) ? rec.thumb.replace(/\/\d+px-/, '/1600px-') : rec.thumb; }
+  function lightbox(rec, name) {
+    const prior = $('.lightbox'); if (prior) prior.remove();
+    const img = h('img', { class: 'lightbox-img', alt: name || '' });
+    const fallback = rec.blob ? URL.createObjectURL(rec.blob) : rec.thumb;
+    img.src = fallback;
+    if (navigator.onLine && largerUrl(rec) !== rec.thumb) { const big = new Image(); big.onload = () => { img.src = big.src; }; big.src = largerUrl(rec); }
+    let zoomed = false;
+    const frame = h('div', { class: 'lightbox-frame' }, img);
+    img.addEventListener('click', e => { e.stopPropagation(); zoomed = !zoomed; frame.classList.toggle('zoomed', zoomed); });
+    const close = () => { box.remove(); document.removeEventListener('keydown', onKey); };
+    const onKey = e => { if (e.key === 'Escape') close(); };
+    const box = h('div', { class: 'lightbox', role: 'dialog', 'aria-label': (name || 'Photo') + ', enlarged', onclick: close },
+      h('button', { class: 'lightbox-close', 'aria-label': 'Close', onclick: e => { e.stopPropagation(); close(); } }, '\u00D7'),
+      frame,
+      h('div', { class: 'lightbox-cap', onclick: e => e.stopPropagation() }, name ? h('b', null, name) : null, photoCredit(rec), h('span', { class: 'muted small' }, 'Tap the photo to zoom, tap outside to close.')));
+    document.addEventListener('keydown', onKey);
+    document.body.append(box);
   }
   function photoCredit(rec) {
     if (!rec) return null;
@@ -120,7 +142,7 @@
     const slot = h('span', { class: 'photo-slot ' + (cls || 'thumb') });
     if (!sp) return slot;
     let started = false;
-    slot._load = () => { if (started) return; started = true; photoQueue.push(() => speciesPhoto(sp).then(rec => { if (!rec) { slot.remove(); return; } slot.replaceWith(withCredit ? h('div', null, photoImg(rec, cls), photoCredit(rec)) : photoImg(rec, cls)); }).catch(() => slot.remove())); pumpPhotos(); };
+    slot._load = () => { if (started) return; started = true; photoQueue.push(() => speciesPhoto(sp).then(rec => { if (!rec) { slot.remove(); return; } slot.replaceWith(withCredit ? h('div', null, photoImg(rec, cls, sp.name), photoCredit(rec)) : photoImg(rec, cls, sp.name)); }).catch(() => slot.remove())); pumpPhotos(); };
     if (slotObserver) slotObserver.observe(slot); else slot._load();
     return slot;
   }
@@ -363,7 +385,7 @@
       const all = (await DB.all('kv')).filter(r => String(r.key).startsWith('photo:') && r.value);
       view.append(h('button', { class: 'back', onclick: () => go('settings') }, '\u2039 Settings'), h('h2', null, 'Photo credits'));
       if (!all.length) return view.append(h('div', { class: 'empty' }, 'No photos loaded yet. Open a species in the Reference tab.'));
-      for (const r of all.sort((x, y) => x.key.localeCompare(y.key))) view.append(h('div', { class: 'rec' }, photoImg(r.value, 'thumb'), h('div', { class: 't' }, h('b', null, r.key.slice(6)), photoCredit(r.value))));
+      for (const r of all.sort((x, y) => x.key.localeCompare(y.key))) view.append(h('div', { class: 'rec' }, photoImg(r.value, 'thumb', r.key.slice(6)), h('div', { class: 't' }, h('b', null, r.key.slice(6)), photoCredit(r.value))));
       return;
     }
     const f = {}; const mk = async (k, label, type) => { f[k] = h('input', { type: type || 'text', value: await S.get(k, '') }); return field(label, f[k]); };
