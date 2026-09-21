@@ -1,0 +1,482 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#2E5E3E">
+<meta name="color-scheme" content="light">
+<title>Scale Sitter: reptile care while you're away</title>
+<meta name="description" content="Reptile feeding and check-ins at your home while you're away. Pick your dates and send a request.">
+<meta property="og:title" content="Scale Sitter">
+<meta property="og:description" content="Reptile feeding and check-ins at your home while you're away.">
+<link rel="icon" href="../icons/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Fredoka:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#15261C; --moss:#1F3B2D; --fern:#3F7D4E; --leaf:#DCE9D1; --mist:#ECF3E4; --paper:#F7FAF3;
+  --amber:#F2A03D; --amberDeep:#B9640F; --line:#BFCFB5; --muted:#4A5E50; --booked:#8B978D; --warn:#8A4B08;
+  --display:'Fredoka','Arial Rounded MT Bold','Trebuchet MS',system-ui,sans-serif;
+  --body:'Atkinson Hyperlegible','Segoe UI',system-ui,-apple-system,Roboto,Arial,sans-serif;
+}
+*{box-sizing:border-box}
+html{background:var(--paper);color:var(--ink);font-family:var(--body);font-size:18px;line-height:1.55;-webkit-text-size-adjust:100%;scroll-behavior:smooth;scroll-padding-top:1rem}
+body{margin:0;padding-bottom:env(safe-area-inset-bottom)}
+.wrap{max-width:40rem;margin:0 auto;padding:0 1.25rem}
+a{color:var(--fern);text-underline-offset:.15em}
+:focus-visible{outline:3px solid var(--amberDeep);outline-offset:2px;border-radius:6px}
+
+/* The scale band: the one loud thing on the page */
+.band{height:calc(118px + env(safe-area-inset-top));background:url(scales.svg) repeat-x center bottom/auto 118px,linear-gradient(#2E5E3E,#2E5E3E) no-repeat top/100% calc(100% - 110px)}
+@media(min-width:48rem){.band{height:168px;background-size:auto 168px,100% 0}}
+
+.hero{padding-top:1.5rem;padding-bottom:.5rem}
+h1{font-family:var(--display);font-weight:700;font-size:clamp(3.6rem,19vw,7.25rem);line-height:.86;letter-spacing:-.015em;margin:0 0 1.1rem;color:var(--moss)}
+.lede{font-family:var(--display);font-weight:500;font-size:1.45rem;line-height:1.25;margin:0 0 1rem;color:var(--fern)}
+.hero p{margin:0 0 1rem}
+.where{color:var(--muted)}
+h2{font-family:var(--display);font-weight:600;font-size:1.8rem;line-height:1.15;margin:0 0 .9rem;color:var(--moss)}
+h3{font-family:var(--display);font-weight:600;font-size:1.2rem;line-height:1.25;margin:1.5rem 0 .5rem;color:var(--moss)}
+section{padding:2.25rem 0 0}
+p{margin:0 0 1rem}
+.small{font-size:.89rem;line-height:1.5}
+.muted{color:var(--muted)}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:.5rem;min-height:3.1rem;padding:.6rem 1.5rem;border-radius:999px;border:2px solid var(--moss);background:transparent;color:var(--moss);font-family:var(--display);font-weight:600;font-size:1.1rem;line-height:1.2;text-decoration:none;cursor:pointer;text-align:center}
+.btn.go{background:var(--amber);border-color:var(--moss);color:var(--ink);box-shadow:0 3px 0 var(--moss)}
+.btn.go:active{transform:translateY(2px);box-shadow:0 1px 0 var(--moss)}
+.btn.quiet{border-color:var(--line);font-size:1rem;min-height:2.7rem;padding:.4rem 1.1rem}
+.btnrow{display:flex;flex-wrap:wrap;gap:.75rem;margin:1rem 0}
+.btnrow .btn{flex:1 1 14rem}
+
+/* What a visit covers: scale-shaped markers */
+.covers{list-style:none;margin:0;padding:0}
+.covers li{position:relative;padding:.55rem 0 .55rem 2.1rem;border-bottom:1px solid var(--line)}
+.covers li:last-child{border-bottom:0}
+.covers li::before{content:"";position:absolute;left:.1rem;top:.95rem;width:1.05rem;height:.62rem;border-radius:0 0 1rem 1rem;background:var(--fern);border:2px solid var(--moss);border-top:0}
+
+/* The parents' note */
+.note{background:var(--leaf);border-left:6px solid var(--fern);border-radius:4px 18px 18px 4px;padding:1.2rem 1.25rem 1.1rem;margin:0}
+.note p{margin:0 0 .6rem}
+.note .sig{font-family:var(--display);font-weight:500;color:var(--fern);margin:0}
+.keeps{margin:.25rem 0 0;padding-left:1.2rem}
+.keeps li{margin:.2rem 0}
+
+/* Species lookup */
+label{display:block;font-weight:700;margin:1rem 0 .35rem}
+input[type=search],input[type=text],select,textarea{width:100%;font:inherit;color:var(--ink);background:#fff;border:2px solid var(--line);border-radius:12px;padding:.7rem .85rem;min-height:3.1rem}
+textarea{min-height:6rem;resize:vertical}
+input:focus,select:focus,textarea:focus{border-color:var(--fern);outline:none;box-shadow:0 0 0 3px rgba(63,125,78,.25)}
+.chips{display:flex;flex-wrap:wrap;gap:.45rem;margin:.25rem 0 0}
+.chip{font:inherit;font-size:.95rem;border:2px solid var(--line);background:#fff;color:var(--moss);border-radius:999px;padding:.3rem .85rem;min-height:2.5rem;cursor:pointer}
+.chip[aria-pressed=true]{background:var(--moss);border-color:var(--moss);color:#fff}
+.results{list-style:none;margin:.6rem 0 0;padding:0;max-height:17rem;overflow:auto;border:2px solid var(--line);border-radius:12px;background:#fff}
+.results:empty{display:none}
+.results li+li{border-top:1px solid var(--mist)}
+.results button{width:100%;text-align:left;font:inherit;background:none;border:0;color:var(--ink);padding:.7rem .9rem;min-height:3rem;cursor:pointer;display:flex;justify-content:space-between;gap:1rem}
+.results button:hover{background:var(--mist)}
+.results .grp{color:var(--muted);font-size:.85rem;white-space:nowrap;align-self:center}
+.care{margin:1rem 0 0;background:#fff;border:2px solid var(--moss);border-radius:18px;padding:1.1rem 1.15rem 1.2rem;box-shadow:0 4px 0 var(--leaf)}
+.care h3{margin:0 0 .15rem;font-size:1.4rem}
+.care dl{display:grid;grid-template-columns:max-content 1fr;gap:.35rem 1rem;margin:.9rem 0}
+.care dt{color:var(--muted)}
+.care dd{margin:0}
+.care .kn{background:var(--mist);border-radius:10px;padding:.65rem .8rem;margin:0 0 .8rem}
+.care .ask{color:var(--warn);font-weight:700}
+.mine{list-style:none;margin:.5rem 0 0;padding:0}
+.mine li{display:flex;align-items:center;gap:.6rem;padding:.55rem 0;border-bottom:1px solid var(--line)}
+.mine .nm{flex:1;font-weight:700}
+.step{display:inline-flex;align-items:center;border:2px solid var(--line);border-radius:999px;background:#fff}
+.step button{font:inherit;font-size:1.25rem;line-height:1;width:2.6rem;height:2.5rem;border:0;background:none;color:var(--moss);cursor:pointer;border-radius:999px}
+.step output{min-width:1.6rem;text-align:center;font-weight:700}
+.rm{font:inherit;font-size:.9rem;border:0;background:none;color:var(--muted);text-decoration:underline;cursor:pointer;padding:.5rem .25rem}
+
+/* Calendar */
+.cal{background:#fff;border:2px solid var(--line);border-radius:18px;padding:.9rem .75rem 1rem}
+.calhead{display:flex;align-items:center;justify-content:space-between;margin-bottom:.4rem}
+.calhead h3{margin:0;font-size:1.25rem}
+.nav{font:inherit;font-size:1.5rem;line-height:1;width:3rem;height:3rem;border-radius:999px;border:2px solid var(--line);background:#fff;color:var(--moss);cursor:pointer}
+.nav:disabled{opacity:.35;cursor:default}
+.grid{display:grid;grid-template-columns:repeat(7,1fr);row-gap:3px}
+.dow{text-align:center;font-size:.8rem;color:var(--muted);padding:.3rem 0}
+.day{position:relative;aspect-ratio:1;min-height:2.6rem;border:0;background:none;padding:0;font:500 1.05rem var(--display);color:var(--ink);cursor:pointer}
+.day span{position:relative;z-index:1;display:flex;align-items:center;justify-content:center;width:100%;height:100%;max-width:2.9rem;max-height:2.9rem;margin:auto;border-radius:999px}
+.day:hover:not(:disabled) span{background:var(--mist)}
+.day.today span::after{content:"";position:absolute;bottom:14%;left:50%;width:5px;height:5px;margin-left:-2.5px;border-radius:50%;background:var(--amberDeep)}
+.day.in{background:var(--leaf)}
+.day.start.ranged{background:linear-gradient(90deg,transparent 50%,var(--leaf) 50%)}
+.day.end.ranged{background:linear-gradient(90deg,var(--leaf) 50%,transparent 50%)}
+.day.start span,.day.end span,.day.start:hover span,.day.end:hover span{background:var(--moss);color:#fff;font-weight:700}
+.day:disabled{cursor:default;color:#A9B3AB}
+.day.booked{color:var(--booked);text-decoration:line-through;text-decoration-thickness:2px}
+.day.in.booked{color:var(--warn)}
+.calmsg{margin:.9rem .25rem 0;min-height:3.2em}
+.calmsg strong{font-family:var(--display);font-weight:600;font-size:1.15rem;color:var(--moss)}
+.warn{color:var(--warn)}
+.legend{display:flex;flex-wrap:wrap;gap:.25rem 1.25rem;margin:.6rem .25rem 0}
+
+.preview{white-space:pre-wrap;background:#fff;border:2px dashed var(--line);border-radius:12px;padding:.85rem 1rem;margin:.4rem 0 0;font-size:.95rem;line-height:1.5}
+
+/* What happens next: a real sequence, so it is numbered */
+.next{list-style:none;counter-reset:n;margin:0;padding:0}
+.next li{counter-increment:n;position:relative;padding:0 0 1.2rem 3.1rem}
+.next li::before{content:counter(n);position:absolute;left:0;top:-.1rem;width:2.2rem;height:2.2rem;border-radius:50%;background:var(--moss);color:#fff;font-family:var(--display);font-weight:600;display:flex;align-items:center;justify-content:center}
+.next li:not(:last-child)::after{content:"";position:absolute;left:1.05rem;top:2.3rem;bottom:.2rem;width:2px;background:var(--line)}
+.next b{font-family:var(--display);font-weight:600;font-size:1.12rem;color:var(--moss);display:block}
+
+.no{margin:0;padding-left:1.2rem}
+.no li{margin:.25rem 0}
+.setup{background:#FFF3D6;border:2px solid var(--amberDeep);border-radius:12px;padding:.85rem 1rem;margin:1.5rem 0 0}
+footer{margin-top:3rem;background:var(--moss);color:#DDE8D6;padding:1.75rem 0 calc(1.75rem + env(safe-area-inset-bottom))}
+footer a{color:#fff}
+footer p{margin:0 0 .6rem}
+[hidden]{display:none!important}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.btn.go:active{transform:none}}
+@media print{.band,.btn,.chips,.results,footer{display:none}}
+</style>
+</head>
+<body>
+<div class="band" aria-hidden="true"></div>
+
+<header class="hero wrap">
+  <h1>Scale<br>Sitter</h1>
+  <p class="lede">Reptile feeding and check-ins while you're away.</p>
+  <p id="intro"></p>
+  <p class="where" id="where"></p>
+  <div class="btnrow"><a class="btn go" href="#dates">Check your dates</a></div>
+</header>
+
+<main class="wrap">
+  <noscript><p class="setup">This page needs JavaScript for the calendar and the send buttons. Turn it on and reload.</p></noscript>
+  <div class="setup small" id="setup" hidden><b>Setup needed.</b> No phone or email is set yet, so the send buttons are hidden. Open <code>sitter/config.js</code> on GitHub and fill in <code>phone</code> or <code>email</code>.</div>
+
+  <section id="visit">
+    <h2>What a visit covers</h2>
+    <ul class="covers" id="services"></ul>
+    <p class="small muted" style="margin-top:.9rem">You supply the food and anything else your animal needs. I follow your routine, not my own.</p>
+  </section>
+
+  <section id="parents">
+    <div class="note">
+      <p id="parentsNote"></p>
+      <p class="sig" id="sig"></p>
+    </div>
+    <div id="keepsBlock" hidden>
+      <h3 id="keepsTitle"></h3>
+      <ul class="keeps" id="keeps"></ul>
+    </div>
+  </section>
+
+  <section id="animals">
+    <h2>What do you keep?</h2>
+    <p>Find your animal and see what I'd work from. Then add it to your request.</p>
+    <div class="chips" id="chips" role="group" aria-label="Browse by type"></div>
+    <label for="q">Or search by name</label>
+    <input id="q" type="search" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Bearded dragon, ball python, crested gecko">
+    <ul class="results" id="results" aria-label="Matching animals"></ul>
+    <div class="care" id="care" hidden aria-live="polite"></div>
+    <div id="mineBlock" hidden>
+      <h3>On your request</h3>
+      <ul class="mine" id="mine"></ul>
+    </div>
+  </section>
+
+  <section id="dates">
+    <h2>When are you away?</h2>
+    <div class="cal">
+      <div class="calhead">
+        <button class="nav" id="prev" type="button" aria-label="Previous month">&lsaquo;</button>
+        <h3 id="month" aria-live="polite"></h3>
+        <button class="nav" id="next" type="button" aria-label="Next month">&rsaquo;</button>
+      </div>
+      <div class="grid" id="grid"></div>
+      <p class="calmsg" id="calmsg" aria-live="polite"></p>
+      <div class="legend small muted"><span><s>12</s> already booked</span><span id="noticeNote"></span></div>
+      <div class="btnrow"><button class="btn quiet" id="clear" type="button" hidden>Clear dates</button></div>
+    </div>
+  </section>
+
+  <section id="send">
+    <h2>Send your request</h2>
+    <label for="who">Your name</label>
+    <input id="who" type="text" autocomplete="name">
+    <label for="freq">How often should I visit?</label>
+    <select id="freq">
+      <option>Not sure yet, let's talk about it</option>
+      <option>Every day</option>
+      <option>Every other day</option>
+      <option>Only on feeding days</option>
+    </select>
+    <label for="notes">Anything I should know</label>
+    <textarea id="notes" placeholder="Feeding routine, medication, a shy eater, a tricky lid"></textarea>
+    <p class="small muted" style="margin-top:.9rem">Price depends on your animals and how often I visit. A parent will tell you when they reply.</p>
+
+    <h3>Your message</h3>
+    <div class="preview" id="preview"></div>
+    <div class="btnrow" id="sendrow">
+      <a class="btn go" id="sms" href="#">Text this request</a>
+      <a class="btn go" id="mail" href="#">Email this request</a>
+    </div>
+    <div class="btnrow"><button class="btn quiet" id="copy" type="button">Copy the message</button></div>
+    <p class="small muted">Nothing you type here is saved or sent to a server. The buttons open your own text or email app with the message ready, and you press send. It goes to <span id="sitterName2"></span>'s parents.</p>
+    <p class="small" id="direct" hidden></p>
+  </section>
+
+  <section id="how">
+    <h2>What happens next</h2>
+    <ol class="next">
+      <li><b>A parent replies</b>To confirm your dates or ask a question.</li>
+      <li><b>Free meet-and-greet at your home</b><span class="sn"></span> and a parent meet your animals and walk through your routine. We write it up as a care sheet for each animal, with your vet and who to call.</li>
+      <li><b>Visits while you're away</b>Every visit is logged: what was offered, what was eaten, temperatures, anything unusual. You get a photo and a note each time. If something looks wrong, a parent calls you right away.</li>
+      <li><b>You come home to a care report</b>The whole log in one place, so you can see exactly what happened while you were gone.</li>
+    </ol>
+  </section>
+
+  <section id="scope">
+    <h2>What we say no to</h2>
+    <ul class="no" id="wontDo"></ul>
+    <p class="small muted" style="margin-top:.8rem">Monitors and other big, strong animals are a maybe: we'll want to meet yours first.</p>
+  </section>
+
+  <section id="rehome" hidden>
+    <h2>Need to rehome a reptile?</h2>
+    <p>If you have a reptile you can't keep any more, please don't release it. Pets rarely survive outside, and some cause real trouble for local wildlife.</p>
+    <p>Tell us about the animal and we'll talk it through. We're still setting this up, so for now it's a conversation, not a drop-off service. We can't take every animal, and some species need permits we don't hold.</p>
+    <div class="btnrow" id="rehomerow">
+      <a class="btn" id="rsms" href="#">Text about rehoming</a>
+      <a class="btn" id="rmail" href="#">Email about rehoming</a>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap small">
+    <p><b id="fname"></b> <span id="ftag"></span></p>
+    <p>Visits are logged in <a href="../">Reptile Log</a>, a free care-logging app for reptile keepers.</p>
+    <p>Care figures on this page are standard starting points from published care guides. Your animal's own routine always comes first.</p>
+  </div>
+</footer>
+
+<script src="config.js"></script>
+<script src="../species.js"></script>
+<script>
+(function () {
+  'use strict';
+  var C = window.SCALE_SITTER || {};
+  var SP = window.RLSpecies || [];
+  var $ = function (id) { return document.getElementById(id); };
+  function h(tag, attrs) {
+    var el = document.createElement(tag), i, k;
+    if (attrs) for (k in attrs) {
+      if (k === 'class') el.className = attrs[k];
+      else if (k === 'text') el.textContent = attrs[k];
+      else if (k.slice(0, 2) === 'on') el.addEventListener(k.slice(2), attrs[k]);
+      else if (attrs[k] !== false && attrs[k] != null) el.setAttribute(k, attrs[k] === true ? '' : attrs[k]);
+    }
+    for (i = 2; i < arguments.length; i++) { var c = arguments[i]; if (c == null || c === false) continue; el.append(c.nodeType ? c : document.createTextNode(String(c))); }
+    return el;
+  }
+  var sitter = C.sitter || 'Your sitter';
+
+  /* ---------- static copy from config ---------- */
+  $('intro').textContent = C.intro || '';
+  $('where').textContent = (C.area ? 'Your neighbor in ' + C.area + '. ' : '') + 'Visits at your home' + (C.boarding ? ', or drop off at ours.' : '.');
+  (C.services || []).forEach(function (s) { $('services').append(h('li', { text: s })); });
+  $('parentsNote').textContent = C.parentsNote || '';
+  $('sig').textContent = sitter + "'s parents";
+  $('sitterName2').textContent = sitter;
+  Array.prototype.forEach.call(document.querySelectorAll('.sn'), function (n) { n.textContent = sitter; });
+  if ((C.keeps || []).length) {
+    $('keepsBlock').hidden = false; $('keepsTitle').textContent = 'What ' + sitter + ' keeps';
+    C.keeps.forEach(function (k) { $('keeps').append(h('li', { text: k })); });
+  }
+  (C.wontDo || []).forEach(function (s) { $('wontDo').append(h('li', { text: s })); });
+  $('fname').textContent = C.name || 'Scale Sitter'; $('ftag').textContent = C.tagline || '';
+  $('rehome').hidden = !C.rehoming;
+
+  /* ---------- animals ---------- */
+  var animals = [];            // { name, count }
+  var GROUPS = [['Snake', 'Snakes'], ['Gecko', 'Geckos'], ['Lizard', 'Lizards'], ['Monitor', 'Monitors'], ['Tortoise', 'Tortoises'], ['Turtle', 'Turtles'], ['Amphibian', 'Frogs and amphibians']];
+  var activeGroup = '';
+  function deg(v) { return /^\d/.test(String(v)) ? String(v).replace(/^(\d+(?: to \d+)?)/, '$1\u00B0F') : String(v); }
+  function every(n) { return n <= 1 ? 'every day' : n === 2 ? 'every other day' : 'every ' + n + ' days'; }
+  function needsMeeting(s) { return s.group === 'Monitor' || (C.askFirst || []).indexOf(s.name) >= 0; }
+
+  function drawChips() {
+    var box = $('chips'); box.textContent = '';
+    if (!SP.length) return;
+    GROUPS.forEach(function (g) {
+      box.append(h('button', { class: 'chip', type: 'button', 'aria-pressed': activeGroup === g[0] ? 'true' : 'false', text: g[1], onclick: function () { activeGroup = activeGroup === g[0] ? '' : g[0]; $('q').value = ''; drawChips(); drawResults(); } }));
+    });
+  }
+  function drawResults() {
+    var q = $('q').value.trim().toLowerCase(), box = $('results'); box.textContent = '';
+    var list = [];
+    if (q) list = SP.filter(function (s) { return s.name.toLowerCase().indexOf(q) >= 0 || s.group.toLowerCase().indexOf(q) >= 0; });
+    else if (activeGroup) list = SP.filter(function (s) { return s.group === activeGroup; });
+    list.forEach(function (s) {
+      box.append(h('li', null, h('button', { type: 'button', onclick: function () { showCare(s); } }, h('span', { text: s.name }), q ? h('span', { class: 'grp', text: s.group }) : null)));
+    });
+    if (q && !list.some(function (s) { return s.name.toLowerCase() === q; })) {
+      var raw = $('q').value.trim();
+      box.append(h('li', null, h('button', { type: 'button', onclick: function () { addAnimal(raw); $('q').value = ''; drawResults(); } }, h('span', { text: 'Add "' + raw + '" to my request' }), h('span', { class: 'grp', text: 'not on the list' }))));
+    }
+  }
+  function showCare(s) {
+    var box = $('care'); box.textContent = ''; box.hidden = false;
+    $('results').textContent = ''; $('q').value = ''; activeGroup = ''; drawChips();   /* fold the list away so the card sits right under the search */
+    var rows = [];
+    rows.push(['Feeding', 'Adults ' + every(s.interval) + (s.juvInterval && s.juvInterval !== s.interval ? ', juveniles ' + every(s.juvInterval) : '')]);
+    rows.push(['Diet', s.diet]);
+    if (s.warm && s.warm !== 'n/a') rows.push([/basking/.test(s.warm) ? 'Basking spot' : 'Warm side', deg(s.warm.replace(/ (basking|warm side)$/, ''))]);
+    if (s.cool && s.cool !== 'n/a') rows.push(['Cool side', deg(s.cool.replace(/^water/, 'Water'))]);
+    if (s.night) rows.push(['Night', deg(s.night)]);
+    if (s.rh && s.rh !== 'aquatic') rows.push(['Humidity', s.rh + (s.rhShed ? ', ' + s.rhShed + '% in shed' : '')]);
+    rows.push(['UVB', s.uvb]);
+    if (s.supp) rows.push(['Supplements', s.supp]);
+    var dl = h('dl');
+    rows.forEach(function (r) { dl.append(h('dt', { text: r[0] }), h('dd', { text: r[1] })); });
+    var declined = (C.decline || []).indexOf(s.name) >= 0;
+    [
+      h('h3', { text: s.name }),
+      h('p', { class: 'small muted', text: declined ? 'The standard care figures, for reference.' : "What I'd work from until you show me your routine." }),
+      dl,
+      h('p', { class: 'kn small' }, h('b', { text: 'Worth knowing: ' }), s.note),
+      declined ? h('p', { class: 'ask small', text: "Sorry, this is one we don't take on. It needs an experienced adult keeper." }) : null,
+      !declined && needsMeeting(s) ? h('p', { class: 'ask small', text: "This is one we'd want to meet, with a parent, before saying yes." }) : null,
+      declined ? null : h('div', { class: 'btnrow' }, h('button', { class: 'btn go', type: 'button', text: 'Add to my request', onclick: function () { addAnimal(s.name); box.hidden = true; $('mineBlock').scrollIntoView({ block: 'nearest' }); } }))
+    ].forEach(function (n) { if (n) box.append(n); });
+    box.scrollIntoView({ block: 'nearest' });
+  }
+  function addAnimal(name) {
+    if (!name) return;
+    var hit = animals.filter(function (a) { return a.name.toLowerCase() === name.toLowerCase(); })[0];
+    if (hit) hit.count++; else animals.push({ name: name, count: 1 });
+    drawMine(); compose();
+  }
+  function drawMine() {
+    var ul = $('mine'); ul.textContent = ''; $('mineBlock').hidden = !animals.length;
+    animals.forEach(function (a, i) {
+      ul.append(h('li', null,
+        h('span', { class: 'nm', text: a.name }),
+        h('span', { class: 'step' },
+          h('button', { type: 'button', 'aria-label': 'One fewer ' + a.name, text: '\u2212', onclick: function () { a.count--; if (a.count < 1) animals.splice(i, 1); drawMine(); compose(); } }),
+          h('output', { 'aria-label': 'How many', text: a.count }),
+          h('button', { type: 'button', 'aria-label': 'One more ' + a.name, text: '+', onclick: function () { a.count++; drawMine(); compose(); } })),
+        h('button', { class: 'rm', type: 'button', text: 'Remove', 'aria-label': 'Remove ' + a.name, onclick: function () { animals.splice(i, 1); drawMine(); compose(); } })));
+    });
+  }
+  $('q').addEventListener('input', function () { activeGroup = ''; drawChips(); drawResults(); });
+  if (!SP.length) { $('q').placeholder = 'Type your animal and press Enter'; }
+  $('q').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); var v = $('q').value.trim(); var exact = SP.filter(function (s) { return s.name.toLowerCase() === v.toLowerCase(); })[0]; if (exact) showCare(exact); else if (v) { addAnimal(v); $('q').value = ''; drawResults(); } } });
+
+  /* ---------- calendar ---------- */
+  var MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  var DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  function iso(d) { return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
+  function fromIso(s) { var p = s.split('-'); return new Date(+p[0], +p[1] - 1, +p[2]); }
+  function addDays(d, n) { var x = new Date(d.getFullYear(), d.getMonth(), d.getDate() + n); return x; }
+  function nice(s, withYear) { var d = fromIso(s); return DOW[d.getDay()] + ', ' + MONTHS[d.getMonth()].slice(0, 3) + ' ' + d.getDate() + (withYear ? ', ' + d.getFullYear() : ''); }
+  function daysBetween(a, b) { return Math.round((fromIso(b) - fromIso(a)) / 864e5) + 1; }
+
+  var today = new Date(); today = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  var notice = Math.max(0, +C.noticeDays || 0);
+  var minDay = iso(addDays(today, notice));
+  var maxDay = iso(new Date(today.getFullYear(), today.getMonth() + (+C.monthsAhead || 12) + 1, 0));
+  var booked = {};
+  (C.booked || []).forEach(function (b) {
+    if (typeof b === 'string') { booked[b] = 1; return; }
+    if (b && b.length === 2) { var d = fromIso(b[0]), end = fromIso(b[1]), guard = 0; while (d <= end && guard++ < 400) { booked[iso(d)] = 1; d = addDays(d, 1); } }
+  });
+  var view = fromIso(minDay); view = new Date(view.getFullYear(), view.getMonth(), 1);
+  var start = '', end = '';
+  $('noticeNote').textContent = notice ? 'Earliest start is ' + nice(minDay) : '';
+
+  function bookedInRange() { var n = 0; if (start && end) { var d = fromIso(start), e = fromIso(end); while (d <= e) { if (booked[iso(d)]) n++; d = addDays(d, 1); } } return n; }
+  function pick(s) {
+    if (!start || end) { start = s; end = ''; }
+    else if (s < start) { start = s; }
+    else { end = s; }
+    drawCal(); compose();
+  }
+  function drawCal() {
+    var y = view.getFullYear(), m = view.getMonth(), grid = $('grid'); grid.textContent = '';
+    $('month').textContent = MONTHS[m] + ' ' + y;
+    DOW.forEach(function (d) { grid.append(h('div', { class: 'dow', text: d.slice(0, 2), 'aria-hidden': 'true' })); });
+    var first = new Date(y, m, 1), pad = first.getDay(), count = new Date(y, m + 1, 0).getDate(), i;
+    for (i = 0; i < pad; i++) grid.append(h('div'));
+    for (i = 1; i <= count; i++) {
+      var s = iso(new Date(y, m, i)), cls = ['day'], off = s < minDay || s > maxDay, isBooked = !!booked[s];
+      if (s === iso(today)) cls.push('today');
+      if (isBooked) cls.push('booked');
+      if (start && s === start) { cls.push('start'); if (end && end !== start) cls.push('ranged'); }
+      if (end && s === end) { cls.push('end'); if (end !== start) cls.push('ranged'); }
+      if (start && end && s > start && s < end) cls.push('in');
+      var label = MONTHS[m] + ' ' + i + (isBooked ? ', already booked' : '') + (s === start ? ', first day away' : '') + (s === end ? ', last day away' : '');
+      /* booked days stay selectable only as part of a range the visitor drags across; on their own they are disabled */
+      grid.append(h('button', { class: cls.join(' '), type: 'button', disabled: off || (isBooked && !(start && !end && s > start)), 'aria-label': label, 'aria-pressed': (s === start || s === end) ? 'true' : null, 'data-d': s, onclick: (function (s) { return function () { pick(s); }; })(s) }, h('span', { text: i })));
+    }
+    $('prev').disabled = (y === fromIso(minDay).getFullYear() && m === fromIso(minDay).getMonth());
+    $('next').disabled = (y === fromIso(maxDay).getFullYear() && m === fromIso(maxDay).getMonth());
+    var msg = $('calmsg'); msg.textContent = '';
+    if (!start) msg.append('Tap your first day away, then your last day away.');
+    else if (!end) msg.append(h('strong', { text: nice(start) }), h('br'), 'Now tap your last day away. For a single day, tap it again.');
+    else {
+      var n = daysBetween(start, end), b = bookedInRange();
+      msg.append(h('strong', { text: start === end ? nice(start, true) : nice(start) + ' to ' + nice(end, true) }), h('br'), n + (n === 1 ? ' day' : ' days') + ' away.');
+      if (b) msg.append(h('br'), h('span', { class: 'warn', text: (b === 1 ? 'One day' : b + ' days') + ' in there ' + (b === 1 ? 'is' : 'are') + ' already booked. Send it anyway and we\'ll tell you what we can cover.' }));
+    }
+    $('clear').hidden = !start;
+  }
+  $('prev').addEventListener('click', function () { view = new Date(view.getFullYear(), view.getMonth() - 1, 1); drawCal(); });
+  $('next').addEventListener('click', function () { view = new Date(view.getFullYear(), view.getMonth() + 1, 1); drawCal(); });
+  $('clear').addEventListener('click', function () { start = ''; end = ''; drawCal(); compose(); });
+
+  /* ---------- the message ---------- */
+  function prettyPhone(p) { var d = String(p).replace(/\D/g, ''); if (d.length === 11 && d[0] === '1') d = d.slice(1); return d.length === 10 ? '(' + d.slice(0, 3) + ') ' + d.slice(3, 6) + '-' + d.slice(6) : p; }
+  function message() {
+    var L = [(C.name || 'Scale Sitter') + ' request'];
+    var who = $('who').value.trim(); if (who) L.push('From: ' + who);
+    if (start && end) { var n = daysBetween(start, end), b = bookedInRange(); L.push('Away: ' + (start === end ? nice(start, true) : nice(start) + ' to ' + nice(end, true)) + ' (' + n + (n === 1 ? ' day' : ' days') + ')' + (b ? ' - overlaps ' + b + ' booked' : '')); }
+    else if (start) L.push('Away from: ' + nice(start, true) + ' (last day not picked)');
+    else L.push('Away: dates not picked yet');
+    L.push('Animals: ' + (animals.length ? animals.map(function (a) { return a.name + ' (' + a.count + ')'; }).join(', ') : 'not listed yet'));
+    L.push('Visits: ' + $('freq').value);
+    var notes = $('notes').value.trim(); if (notes) L.push('Notes: ' + notes);
+    return L.join('\n');
+  }
+  var REHOME = (C.name || 'Scale Sitter') + ' rehoming question\nAnimal (species, age, sex if known): \nHow long you have had it: \nAny health or feeding problems: \nEnclosure and equipment included: \nWhen it needs a new home by: ';
+  function smsHref(body) { return 'sms:' + String(C.phone).replace(/[^\d+]/g, '') + '?&body=' + encodeURIComponent(body); }
+  function mailHref(subject, body) { return 'mailto:' + C.email + '?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body); }
+  function compose() {
+    var msg = message(); $('preview').textContent = msg;
+    if (C.phone) $('sms').href = smsHref(msg);
+    if (C.email) $('mail').href = mailHref((C.name || 'Scale Sitter') + ' request' + (start ? ', ' + nice(start) : ''), msg);
+  }
+  ['who', 'freq', 'notes'].forEach(function (id) { $(id).addEventListener('input', compose); });
+  $('sms').hidden = !C.phone; $('mail').hidden = !C.email;
+  $('rsms').hidden = !C.phone; $('rmail').hidden = !C.email;
+  if (C.phone) $('rsms').href = smsHref(REHOME);
+  if (C.email) $('rmail').href = mailHref((C.name || 'Scale Sitter') + ' rehoming question', REHOME);
+  if (!C.phone && !C.email) { $('setup').hidden = false; $('sendrow').hidden = true; $('rehomerow').hidden = true; }
+  else {
+    var d = $('direct'); d.hidden = false; d.append('Want to talk first? Reach ' + sitter + "'s parents: ");
+    if (C.phone) d.append(h('a', { href: 'tel:' + String(C.phone).replace(/[^\d+]/g, ''), text: prettyPhone(C.phone) }));
+    if (C.phone && C.email) d.append(' or ');
+    if (C.email) d.append(h('a', { href: 'mailto:' + C.email, text: C.email }));
+    d.append('.');
+  }
+  $('copy').addEventListener('click', function () {
+    var btn = this, txt = message();
+    function done() { btn.textContent = 'Copied'; setTimeout(function () { btn.textContent = 'Copy the message'; }, 2000); }
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(done, fallback); else fallback();
+    function fallback() { var t = h('textarea'); t.value = txt; document.body.append(t); t.select(); try { document.execCommand('copy'); done(); } catch (e) { btn.textContent = 'Press and hold the message to copy'; } t.remove(); }
+  });
+
+  drawChips(); drawCal(); compose();
+})();
+</script>
+</body>
+</html>
