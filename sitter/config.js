@@ -7,11 +7,11 @@ window.SCALE_SITTER = {
   name: 'Scale Sitter',
   tagline: 'Cold-blooded pets, warm-hearted care.',
   sitter: 'Lucas',                 // first name only
-  area: '',                        // e.g. 'Teravista'. Shown as "your neighbor in Teravista". Leave '' to hide.
+  area: 'Round Rock, TX',                        // e.g. 'Teravista'. Shown as "your neighbor in Teravista". Leave '' to hide.
 
   // ---- Where requests go (use a parent-owned number and inbox) ---------
-  phone: '',                       // e.g. '+15125550100'. Leave '' to hide the text button.
-  email: '',                       // e.g. 'scalesitter@gmail.com'. Leave '' to hide the email button.
+  phone: '15124879769',                       // e.g. '+15125550100'. Leave '' to hide the text button.
+  email: 'philipjamesperry@gmail.com',                       // e.g. 'scalesitter@gmail.com'. Leave '' to hide the email button.
 
   // ---- Dates that are already taken -------------------------------------
   // A single day:  '2026-11-26'
@@ -22,7 +22,7 @@ window.SCALE_SITTER = {
   monthsAhead: 12,                 // how far forward the calendar goes
 
   // ---- The opening paragraph, in Lucas's voice --------------------------
-  intro: "I'm Lucas. We keep reptiles at home, so I know the routine: the right food on the right day, fresh water, and a warm side that is actually warm. While you're away I'll visit your animals at your home and keep everything the way you left it.",
+  intro: "I'm Lucas. We keep reptiles at home, so I know the routine: the right food on the right day, fresh water, and a warm side. While you're away I'll visit your animals at your home and keep everything the way you left it.",
 
   // ---- What Lucas keeps now (the "why trust him" list) -------------------
   // e.g. 'Bearded dragon, 3 years'. Leave the list empty to hide this block.
