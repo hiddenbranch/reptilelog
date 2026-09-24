@@ -1,0 +1,12 @@
+Reptile Log repair (hiddenbranch/reptilelog)
+
+Upload these 8 files to the reptilelog repository. They replace the Brew Log files that overwrote them:
+  index.html, app.js, core.js, sw.js, manifest.webmanifest, icons/icon-192.png, icons/icon-512.png, icons/icon-512-maskable.png
+Drag the icons FOLDER in as a folder so the three icons land in icons/.
+Do not upload this text file.
+
+Then delete these 8 Brew Log files, which do not belong in the repository:
+  README.md, beerxml.js, bump.mjs, data.js, recipes-gen.js, recipes.js, recipes.json, shop.js
+
+Leave alone: license.js, photos.js, species.js (the upload never touched them).
+Settings in the app should read Reptile Log 1.5.1 when it has worked.
