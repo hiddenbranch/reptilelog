@@ -17,7 +17,7 @@
 <style>
 :root{
   --ink:#15261C; --moss:#1F3B2D; --fern:#3F7D4E; --leaf:#DCE9D1; --mist:#ECF3E4; --paper:#F7FAF3;
-  --amber:#F2A03D; --amberDeep:#B9640F; --line:#BFCFB5; --muted:#4A5E50; --booked:#8B978D; --warn:#8A4B08;
+  --amber:#F2A03D; --amberDeep:#B9640F; --line:#BFCFB5; --muted:#4A5E50; --na:#8B978D; --warn:#8A4B08;
   --display:'Fredoka','Arial Rounded MT Bold','Trebuchet MS',system-ui,sans-serif;
   --body:'Atkinson Hyperlegible','Segoe UI',system-ui,-apple-system,Roboto,Arial,sans-serif;
 }
@@ -110,12 +110,23 @@ input:focus,select:focus,textarea:focus{border-color:var(--fern);outline:none;bo
 .day.end.ranged{background:linear-gradient(90deg,var(--leaf) 50%,transparent 50%)}
 .day.start span,.day.end span,.day.start:hover span,.day.end:hover span{background:var(--moss);color:#fff;font-weight:700}
 .day:disabled{cursor:default;color:#A9B3AB}
-.day.booked{color:var(--booked);text-decoration:line-through;text-decoration-thickness:2px}
-.day.in.booked{color:var(--warn)}
+.day.na{color:var(--na);text-decoration:line-through;text-decoration-thickness:2px}
+.day.in.na{color:var(--warn)}
 .calmsg{margin:.9rem .25rem 0;min-height:3.2em}
 .calmsg strong{font-family:var(--display);font-weight:600;font-size:1.15rem;color:var(--moss)}
 .warn{color:var(--warn)}
 .legend{display:flex;flex-wrap:wrap;gap:.25rem 1.25rem;margin:.6rem .25rem 0}
+
+/* Where the care happens: one choice that changes the rest of the form */
+.choice{border:0;margin:1rem 0 0;padding:0;min-width:0}
+.choice legend{font-weight:700;padding:0;margin:0 0 .45rem}
+.opt{display:flex;align-items:center;gap:.75rem;margin:0 0 .5rem;padding:.65rem .9rem;min-height:3.1rem;border:2px solid var(--line);border-radius:12px;background:#fff;font-weight:400;cursor:pointer}
+.opt:has(input:checked){border-color:var(--moss);background:var(--mist)}
+.opt input{appearance:none;-webkit-appearance:none;flex:none;width:1.35rem;height:1.35rem;margin:0;border:2px solid var(--moss);border-radius:50%;background:#fff;display:grid;place-content:center;cursor:pointer}
+.opt input::before{content:"";width:.66rem;height:.66rem;border-radius:50%;background:var(--moss);transform:scale(0)}
+.opt input:checked::before{transform:scale(1)}
+.opt input:focus-visible{outline:3px solid var(--amberDeep);outline-offset:3px}
+.hint{margin:.45rem 0 0}
 
 .preview{white-space:pre-wrap;background:#fff;border:2px dashed var(--line);border-radius:12px;padding:.85rem 1rem;margin:.4rem 0 0;font-size:.95rem;line-height:1.5}
 
@@ -150,12 +161,18 @@ footer p{margin:0 0 .6rem}
 
 <main class="wrap">
   <noscript><p class="setup">This page needs JavaScript for the calendar and the send buttons. Turn it on and reload.</p></noscript>
+  <div class="setup small" id="cfgerr" hidden><b>Settings didn't load.</b> The calendar and send buttons need <code>sitter/config.js</code>. If it was just edited, look there for a missing quote, comma or bracket.</div>
   <div class="setup small" id="setup" hidden><b>Setup needed.</b> No phone or email is set yet, so the send buttons are hidden. Open <code>sitter/config.js</code> on GitHub and fill in <code>phone</code> or <code>email</code>.</div>
 
   <section id="visit">
     <h2>What a visit covers</h2>
     <ul class="covers" id="services"></ul>
     <p class="small muted" style="margin-top:.9rem">You supply the food and anything else your animal needs. I follow your routine, not my own.</p>
+  </section>
+
+  <section id="dropoff" hidden>
+    <h2>Or drop off at our house</h2>
+    <p id="dropOffNote"></p>
   </section>
 
   <section id="parents">
@@ -193,7 +210,7 @@ footer p{margin:0 0 .6rem}
       </div>
       <div class="grid" id="grid"></div>
       <p class="calmsg" id="calmsg" aria-live="polite"></p>
-      <div class="legend small muted"><span><s>12</s> already booked</span><span id="noticeNote"></span></div>
+      <div class="legend small muted"><span><s>12</s> not available</span><span id="noticeNote"></span></div>
       <div class="btnrow"><button class="btn quiet" id="clear" type="button" hidden>Clear dates</button></div>
     </div>
   </section>
@@ -202,16 +219,43 @@ footer p{margin:0 0 .6rem}
     <h2>Send your request</h2>
     <label for="who">Your name</label>
     <input id="who" type="text" autocomplete="name">
-    <label for="freq">How often should I visit?</label>
-    <select id="freq">
-      <option>Not sure yet, let's talk about it</option>
-      <option>Every day</option>
-      <option>Every other day</option>
-      <option>Only on feeding days</option>
-    </select>
+    <fieldset class="choice" id="placeBlock" hidden>
+      <legend>Where should the care happen?</legend>
+      <label class="opt"><input type="radio" name="place" value="home" checked><span>Visits at my home</span></label>
+      <label class="opt"><input type="radio" name="place" value="drop"><span>Drop-off at your house</span></label>
+      <label class="opt"><input type="radio" name="place" value="either"><span>Either works</span></label>
+    </fieldset>
+    <div id="dropBlock" hidden>
+      <p class="small muted hint">A parent looks at every drop-off before we say yes.</p>
+      <label for="encl">How big is the enclosure?</label>
+      <select id="encl">
+        <option value="">Pick one</option>
+        <option>Small, one person can carry it</option>
+        <option>Medium, it takes two people</option>
+        <option>Large, it doesn't really move</option>
+        <option>Not sure</option>
+      </select>
+      <p class="small warn hint" id="bigNote" hidden>Big setups are usually easier to visit than to move. We'll talk it through.</p>
+      <label for="health">Any mites, illness or vet visits lately?</label>
+      <select id="health">
+        <option value="">Pick one</option>
+        <option>No</option>
+        <option>Yes, I'll explain in the notes</option>
+        <option>Not sure</option>
+      </select>
+    </div>
+    <div id="freqBlock">
+      <label for="freq">How often should I visit?</label>
+      <select id="freq">
+        <option>Not sure yet, let's talk about it</option>
+        <option>Every day</option>
+        <option>Every other day</option>
+        <option>Only on feeding days</option>
+      </select>
+    </div>
     <label for="notes">Anything I should know</label>
     <textarea id="notes" placeholder="Feeding routine, medication, a shy eater, a tricky lid"></textarea>
-    <p class="small muted" style="margin-top:.9rem">Price depends on your animals and how often I visit. A parent will tell you when they reply.</p>
+    <p class="small muted" style="margin-top:.9rem" id="priceNote">Price depends on your animals and how often I visit. A parent will tell you when they reply.</p>
 
     <h3>Your message</h3>
     <div class="preview" id="preview"></div>
@@ -228,8 +272,8 @@ footer p{margin:0 0 .6rem}
     <h2>What happens next</h2>
     <ol class="next">
       <li><b>A parent replies</b>To confirm your dates or ask a question.</li>
-      <li><b>Free meet-and-greet at your home</b><span class="sn"></span> and a parent meet your animals and walk through your routine. We write it up as a care sheet for each animal, with your vet and who to call.</li>
-      <li><b>Visits while you're away</b>Every visit is logged: what was offered, what was eaten, temperatures, anything unusual. You get a photo and a note each time. If something looks wrong, a parent calls you right away.</li>
+      <li><b id="meetT">Free meet-and-greet at your home</b><span class="sn"></span> and a parent meet your animals and walk through your routine. We write it up as a care sheet for each animal, with your vet and who to call.</li>
+      <li><b id="careT">Visits while you're away</b><span id="careLead">Every visit is logged</span>: what was offered, what was eaten, temperatures, anything unusual. You get a photo and a note each time. If something looks wrong, a parent calls you right away.</li>
       <li><b>You come home to a care report</b>The whole log in one place, so you can see exactly what happened while you were gone.</li>
     </ol>
   </section>
@@ -243,7 +287,7 @@ footer p{margin:0 0 .6rem}
   <section id="rehome" hidden>
     <h2>Need to rehome a reptile?</h2>
     <p>If you have a reptile you can't keep any more, please don't release it. Pets rarely survive outside, and some cause real trouble for local wildlife.</p>
-    <p>Tell us about the animal and we'll talk it through. We're still setting this up, so for now it's a conversation, not a drop-off service. We can't take every animal, and some species need permits we don't hold.</p>
+    <p>Tell us about the animal and we'll talk it through. We're still setting this up, so it always starts with a conversation before any animal changes hands. We can't take every animal, and some species need permits we don't hold.</p>
     <div class="btnrow" id="rehomerow">
       <a class="btn" id="rsms" href="#">Text about rehoming</a>
       <a class="btn" id="rmail" href="#">Email about rehoming</a>
@@ -264,6 +308,7 @@ footer p{margin:0 0 .6rem}
 <script>
 (function () {
   'use strict';
+  var cfgLoaded = !!window.SCALE_SITTER;
   var C = window.SCALE_SITTER || {};
   var SP = window.RLSpecies || [];
   var $ = function (id) { return document.getElementById(id); };
@@ -279,10 +324,11 @@ footer p{margin:0 0 .6rem}
     return el;
   }
   var sitter = C.sitter || 'Your sitter';
+  var dropOff = C.dropOff != null ? !!C.dropOff : !!C.boarding;   /* boarding was the old name for this switch */
 
   /* ---------- static copy from config ---------- */
   $('intro').textContent = C.intro || '';
-  $('where').textContent = (C.area ? 'Your neighbor in ' + C.area + '. ' : '') + 'Visits at your home' + (C.boarding ? ', or drop off at ours.' : '.');
+  $('where').textContent = (C.area ? 'Your neighbor in ' + C.area + '. ' : '') + 'Visits at your home' + (dropOff ? ', or drop-off at our house.' : '.');
   (C.services || []).forEach(function (s) { $('services').append(h('li', { text: s })); });
   $('parentsNote').textContent = C.parentsNote || '';
   $('sig').textContent = sitter + "'s parents";
@@ -385,16 +431,33 @@ footer p{margin:0 0 .6rem}
   var notice = Math.max(0, +C.noticeDays || 0);
   var minDay = iso(addDays(today, notice));
   var maxDay = iso(new Date(today.getFullYear(), today.getMonth() + (+C.monthsAhead || 12) + 1, 0));
-  var booked = {};
-  (C.booked || []).forEach(function (b) {
-    if (typeof b === 'string') { booked[b] = 1; return; }
-    if (b && b.length === 2) { var d = fromIso(b[0]), end = fromIso(b[1]), guard = 0; while (d <= end && guard++ < 400) { booked[iso(d)] = 1; d = addDays(d, 1); } }
+  /* Days Lucas can't take. Reads '2026-12-20', '12/20/2026', '2026-12-20 to 2026-12-27' or ['2026-12-20', '2026-12-27'].
+     'booked' is the old name for the list and still works. */
+  function parseDay(v) {
+    var t = String(v == null ? '' : v).trim(), m, y, mo, da;
+    if ((m = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(t))) { y = +m[1]; mo = +m[2]; da = +m[3]; }
+    else if ((m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(t))) { y = +m[3]; mo = +m[1]; da = +m[2]; }
+    else return null;
+    var d = new Date(y, mo - 1, da);
+    return d.getMonth() === mo - 1 && d.getDate() === da ? d : null;
+  }
+  var blocked = {};
+  function block(a, b) {
+    var d = parseDay(a), e = b === undefined ? d : parseDay(b), guard = 0, t;
+    if (!d || !e) { if (window.console) console.warn('Scale Sitter: could not read the date', a, b === undefined ? '' : b); return; }
+    if (e < d) { t = d; d = e; e = t; }
+    while (d <= e && guard++ < 400) { blocked[iso(d)] = 1; d = addDays(d, 1); }
+  }
+  [].concat(C.unavailable || [], C.booked || []).forEach(function (b) {
+    if (Array.isArray(b)) block(b[0], b[1]);
+    else if (/\sto\s/i.test(String(b))) { var p = String(b).split(/\s+to\s+/i); block(p[0], p[1]); }
+    else block(b);
   });
   var view = fromIso(minDay); view = new Date(view.getFullYear(), view.getMonth(), 1);
   var start = '', end = '';
   $('noticeNote').textContent = notice ? 'Earliest start is ' + nice(minDay) : '';
 
-  function bookedInRange() { var n = 0; if (start && end) { var d = fromIso(start), e = fromIso(end); while (d <= e) { if (booked[iso(d)]) n++; d = addDays(d, 1); } } return n; }
+  function blockedInRange() { var n = 0; if (start && end) { var d = fromIso(start), e = fromIso(end); while (d <= e) { if (blocked[iso(d)]) n++; d = addDays(d, 1); } } return n; }
   function pick(s) {
     if (!start || end) { start = s; end = ''; }
     else if (s < start) { start = s; }
@@ -408,15 +471,15 @@ footer p{margin:0 0 .6rem}
     var first = new Date(y, m, 1), pad = first.getDay(), count = new Date(y, m + 1, 0).getDate(), i;
     for (i = 0; i < pad; i++) grid.append(h('div'));
     for (i = 1; i <= count; i++) {
-      var s = iso(new Date(y, m, i)), cls = ['day'], off = s < minDay || s > maxDay, isBooked = !!booked[s];
+      var s = iso(new Date(y, m, i)), cls = ['day'], off = s < minDay || s > maxDay, isNa = !!blocked[s];
       if (s === iso(today)) cls.push('today');
-      if (isBooked) cls.push('booked');
+      if (isNa) cls.push('na');
       if (start && s === start) { cls.push('start'); if (end && end !== start) cls.push('ranged'); }
       if (end && s === end) { cls.push('end'); if (end !== start) cls.push('ranged'); }
       if (start && end && s > start && s < end) cls.push('in');
-      var label = MONTHS[m] + ' ' + i + (isBooked ? ', already booked' : '') + (s === start ? ', first day away' : '') + (s === end ? ', last day away' : '');
-      /* booked days stay selectable only as part of a range the visitor drags across; on their own they are disabled */
-      grid.append(h('button', { class: cls.join(' '), type: 'button', disabled: off || (isBooked && !(start && !end && s > start)), 'aria-label': label, 'aria-pressed': (s === start || s === end) ? 'true' : null, 'data-d': s, onclick: (function (s) { return function () { pick(s); }; })(s) }, h('span', { text: i })));
+      var label = MONTHS[m] + ' ' + i + (isNa ? ', not available' : '') + (s === start ? ', first day away' : '') + (s === end ? ', last day away' : '');
+      /* unavailable days can sit inside a range the visitor picks; they can't start one */
+      grid.append(h('button', { class: cls.join(' '), type: 'button', disabled: off || (isNa && !(start && !end && s > start)), 'aria-label': label, 'aria-pressed': (s === start || s === end) ? 'true' : null, 'data-d': s, onclick: (function (s) { return function () { pick(s); }; })(s) }, h('span', { text: i })));
     }
     $('prev').disabled = (y === fromIso(minDay).getFullYear() && m === fromIso(minDay).getMonth());
     $('next').disabled = (y === fromIso(maxDay).getFullYear() && m === fromIso(maxDay).getMonth());
@@ -424,9 +487,9 @@ footer p{margin:0 0 .6rem}
     if (!start) msg.append('Tap your first day away, then your last day away.');
     else if (!end) msg.append(h('strong', { text: nice(start) }), h('br'), 'Now tap your last day away. For a single day, tap it again.');
     else {
-      var n = daysBetween(start, end), b = bookedInRange();
+      var n = daysBetween(start, end), b = blockedInRange();
       msg.append(h('strong', { text: start === end ? nice(start, true) : nice(start) + ' to ' + nice(end, true) }), h('br'), n + (n === 1 ? ' day' : ' days') + ' away.');
-      if (b) msg.append(h('br'), h('span', { class: 'warn', text: (b === 1 ? 'One day' : b + ' days') + ' in there ' + (b === 1 ? 'is' : 'are') + ' already booked. Send it anyway and we\'ll tell you what we can cover.' }));
+      if (b) msg.append(h('br'), h('span', { class: 'warn', text: (b === 1 ? 'One day' : b + ' days') + ' in there ' + (b === 1 ? 'isn\'t' : 'aren\'t') + ' available. Send it anyway and we\'ll tell you what we can cover.' }));
     }
     $('clear').hidden = !start;
   }
@@ -439,11 +502,17 @@ footer p{margin:0 0 .6rem}
   function message() {
     var L = [(C.name || 'Scale Sitter') + ' request'];
     var who = $('who').value.trim(); if (who) L.push('From: ' + who);
-    if (start && end) { var n = daysBetween(start, end), b = bookedInRange(); L.push('Away: ' + (start === end ? nice(start, true) : nice(start) + ' to ' + nice(end, true)) + ' (' + n + (n === 1 ? ' day' : ' days') + ')' + (b ? ' - overlaps ' + b + ' booked' : '')); }
+    if (start && end) { var n = daysBetween(start, end), b = blockedInRange(); L.push('Away: ' + (start === end ? nice(start, true) : nice(start) + ' to ' + nice(end, true)) + ' (' + n + (n === 1 ? ' day' : ' days') + (b ? ', ' + b + ' not available' : '') + ')'); }
     else if (start) L.push('Away from: ' + nice(start, true) + ' (last day not picked)');
     else L.push('Away: dates not picked yet');
     L.push('Animals: ' + (animals.length ? animals.map(function (a) { return a.name + ' (' + a.count + ')'; }).join(', ') : 'not listed yet'));
-    L.push('Visits: ' + $('freq').value);
+    var p = place();
+    if (dropOff) L.push('Care: ' + PLACES[p]);
+    if (p !== 'drop') L.push('Visits: ' + $('freq').value);
+    if (p !== 'home') {
+      if ($('encl').value) L.push('Enclosure: ' + $('encl').value);
+      if ($('health').value) L.push('Mites, illness or vet visits lately: ' + $('health').value);
+    }
     var notes = $('notes').value.trim(); if (notes) L.push('Notes: ' + notes);
     return L.join('\n');
   }
@@ -453,14 +522,15 @@ footer p{margin:0 0 .6rem}
   function compose() {
     var msg = message(); $('preview').textContent = msg;
     if (C.phone) $('sms').href = smsHref(msg);
-    if (C.email) $('mail').href = mailHref((C.name || 'Scale Sitter') + ' request' + (start ? ', ' + nice(start) : ''), msg);
+    if (C.email) $('mail').href = mailHref((C.name || 'Scale Sitter') + ' request' + (start ? ', ' + nice(start) : '') + (place() === 'drop' ? ' (drop-off)' : ''), msg);
   }
   ['who', 'freq', 'notes'].forEach(function (id) { $(id).addEventListener('input', compose); });
   $('sms').hidden = !C.phone; $('mail').hidden = !C.email;
   $('rsms').hidden = !C.phone; $('rmail').hidden = !C.email;
   if (C.phone) $('rsms').href = smsHref(REHOME);
   if (C.email) $('rmail').href = mailHref((C.name || 'Scale Sitter') + ' rehoming question', REHOME);
-  if (!C.phone && !C.email) { $('setup').hidden = false; $('sendrow').hidden = true; $('rehomerow').hidden = true; }
+  if (!cfgLoaded) { $('cfgerr').hidden = false; $('sendrow').hidden = true; $('rehomerow').hidden = true; }
+  else if (!C.phone && !C.email) { $('setup').hidden = false; $('sendrow').hidden = true; $('rehomerow').hidden = true; }
   else {
     var d = $('direct'); d.hidden = false; d.append('Want to talk first? Reach ' + sitter + "'s parents: ");
     if (C.phone) d.append(h('a', { href: 'tel:' + String(C.phone).replace(/[^\d+]/g, ''), text: prettyPhone(C.phone) }));
@@ -475,7 +545,30 @@ footer p{margin:0 0 .6rem}
     function fallback() { var t = h('textarea'); t.value = txt; document.body.append(t); t.select(); try { document.execCommand('copy'); done(); } catch (e) { btn.textContent = 'Press and hold the message to copy'; } t.remove(); }
   });
 
-  drawChips(); drawCal(); compose();
+  /* ---------- where the care happens ---------- */
+  var PLACES = { home: 'Visits at my home', drop: 'Drop-off at your house', either: 'Either, visits or drop-off' };
+  function place() { var r = document.querySelector('input[name=place]:checked'); return dropOff && r ? r.value : 'home'; }
+  function syncPlace() {
+    var p = place();
+    $('dropBlock').hidden = p === 'home';
+    $('freqBlock').hidden = p === 'drop';
+    $('bigNote').hidden = !/^Large/.test($('encl').value);
+    compose();
+  }
+  if (dropOff) {
+    $('dropoff').hidden = false;
+    $('dropOffNote').textContent = C.dropOffNote || "Bring your animal in its own enclosure, with its lights, heat and food, and pick it up when you're home. A parent looks at every drop-off before we say yes.";
+    $('placeBlock').hidden = false;
+    $('meetT').textContent = 'Free meet-and-greet';
+    $('careT').textContent = "Care while you're away";
+    $('careLead').textContent = 'Every visit, or every day of a drop-off stay, is logged';
+    $('priceNote').textContent = 'Price depends on your animals and the kind of care. A parent will tell you when they reply.';
+    Array.prototype.forEach.call(document.querySelectorAll('input[name=place]'), function (r) { r.addEventListener('change', syncPlace); });
+    $('encl').addEventListener('change', syncPlace);
+    $('health').addEventListener('change', compose);
+  }
+
+  drawChips(); drawCal(); if (dropOff) syncPlace(); else compose();
 })();
 </script>
 </body>

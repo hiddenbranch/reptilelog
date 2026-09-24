@@ -10,13 +10,16 @@ window.SCALE_SITTER = {
   area: 'Round Rock, TX',                        // e.g. 'Teravista'. Shown as "your neighbor in Teravista". Leave '' to hide.
 
   // ---- Where requests go (use a parent-owned number and inbox) ---------
-  phone: '15124879769',                       // e.g. '+15125550100'. Leave '' to hide the text button.
-  email: 'philipjamesperry@gmail.com',                       // e.g. 'scalesitter@gmail.com'. Leave '' to hide the email button.
+  phone: '',                       // e.g. '+15125550100'. Leave '' to hide the text button.
+  email: 'scalesitter@gmail.com',                       // e.g. 'scalesitter@gmail.com'. Leave '' to hide the email button.
 
-  // ---- Dates that are already taken -------------------------------------
-  // A single day:  '2026-11-26'
-  // A stretch:     ['2026-12-20', '2026-12-27']   (first day, last day)
-  booked: [
+  // ---- Days Lucas can't take --------------------------------------------
+  // Any reason: already booked, a family trip, school camp. No reason shows on
+  // the page; those days are just struck out as "not available".
+  // Put each one in quotes, with a comma after it:
+  //   '2026-11-26',                    one day
+  //   '2026-12-20 to 2026-12-27',      a stretch, first day to last day
+  unavailable: [
   ],
   noticeDays: 2,                   // earliest bookable day is this many days from today
   monthsAhead: 12,                 // how far forward the calendar goes
@@ -52,7 +55,13 @@ window.SCALE_SITTER = {
   // ---- The note from the parents ------------------------------------------
   parentsNote: "Lucas is supervised and supported by us, his parents, on every booking. One of us answers your messages, comes along to the meet-and-greet, and is on call during every visit. If you'd like to know more before you book, reach out to us directly.",
 
+  // ---- Drop-off at our house ----------------------------------------------
+  // true adds "Drop-off at your house" as a choice on the request, plus two
+  // questions for you to review: enclosure size, and mites or illness lately.
+  // Nothing is agreed until you reply. false hides all of it.
+  dropOff: true,
+  dropOffNote: "Bring your animal in its own enclosure, with its lights, heat and food, and pick it up when you're home. A parent looks at every drop-off before we say yes, since it depends on the size of the setup and the room we have.",
+
   // ---- Switches -------------------------------------------------------------
-  boarding: false,                 // true once cages are set up at home: adds "or drop off at our house"
   rehoming: true                   // shows the "Need to rehome a reptile?" section
 };
