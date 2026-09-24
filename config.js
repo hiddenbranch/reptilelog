@@ -11,7 +11,7 @@ window.SCALE_SITTER = {
 
   // ---- Where requests go (use a parent-owned number and inbox) ---------
   phone: '',                       // e.g. '+15125550100'. Leave '' to hide the text button.
-  email: '',                       // e.g. 'scalesitter@gmail.com'. Leave '' to hide the email button.
+  email: 'scalesitter@gmail.com',                       // e.g. 'scalesitter@gmail.com'. Leave '' to hide the email button.
 
   // ---- Days Lucas can't take --------------------------------------------
   // Any reason: already booked, a family trip, school camp. No reason shows on
